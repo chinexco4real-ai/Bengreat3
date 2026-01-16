@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deriv Digit Over 5 Pro - Advanced ML Edition v3 (PSF + LSTM)</title>
+<title>Deriv Digit Over 5 Pro - Advanced ML Edition v3 (PSF + LSTM Optimized)</title>
 <style>
 /* --- STYLES PRESERVED --- */
 body { background: #020617; color: #e5e7eb; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
@@ -149,7 +149,7 @@ tbody tr:hover { background: #1e293b; }
 <body>
 <div class="app">
 
-<h2>Deriv Digit Over 5 Pro <span class="ml-indicator ml-active">ML Enhanced v3 (PSF+LSTM)</span></h2>
+<h2>Deriv Digit Over 5 Pro <span class="ml-indicator ml-active">ML Enhanced v3 (PSF+LSTM Optimized)</span></h2>
 
 <div class="status-container">
     <div id="status" class="status disconnected">Disconnected</div>
@@ -212,7 +212,7 @@ tbody tr:hover { background: #1e293b; }
 </div>
 
 <div class="card">
-  <h3>📊 Advanced ML Analyzer v3 (PSF + LSTM)</h3>
+  <h3>📊 Advanced ML Analyzer v3 (PSF + LSTM Optimized)</h3>
   <div class="analyzer-grid" id="digitDisplay"></div>
   <div class="analyzer-stats">
     <div><span>Over 5</span><b id="overCount" style="color: #22c55e;">0</b></div>
@@ -222,7 +222,7 @@ tbody tr:hover { background: #1e293b; }
   
   <!-- LSTM Training Status -->
   <div class="lstm-status">
-    <div class="lstm-status-header">🧠 LSTM Neural Network Status</div>
+    <div class="lstm-status-header">🧠 LSTM Neural Network Status (Stable Build)</div>
     <div style="font-size: 10px; opacity: 0.7;" id="lstmStatusText">Not Initialized</div>
     <div class="lstm-progress">
       <div class="lstm-progress-bar" id="lstmProgressBar" style="width: 0%;"></div>
@@ -275,7 +275,7 @@ tbody tr:hover { background: #1e293b; }
             <span style="cursor:pointer; color:#3b82f6" onclick="document.getElementById('logContainer').innerHTML=''">Clear</span>
         </div>
         <div class="log-container" id="logContainer">
-            <div class="log-entry"><span class="log-time">[System]</span> <span class="log-msg-success">ML Engine v3 Ready (PSF + LSTM).</span></div>
+            <div class="log-entry"><span class="log-time">[System]</span> <span class="log-msg-success">ML Engine v3 Ready (PSF + LSTM Optimized).</span></div>
         </div>
     </div>
   </div>
@@ -350,7 +350,7 @@ tbody tr:hover { background: #1e293b; }
               <div><span style="font-size:9px">2nd Pred >=</span><input id="s1_p2_min" class="save-setting" type="number" value="50"></div>
               <div><span style="font-size:9px">2nd Pred <=</span><input id="s1_p2_max" class="save-setting" type="number" value="98"></div>
           </div>
-    </div>
+      </div>
 
       <div class="sequence-slot">
           <div class="sequence-slot-title">Slot 2</div>
@@ -514,6 +514,12 @@ tbody tr:hover { background: #1e293b; }
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
 <script>
+// TensorFlow.js memory management configuration
+if (typeof tf !== 'undefined') {
+    tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
+    tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
+}
+
 // ============ CORE VARIABLES ============
 let ws = null;
 let isConnected = false;
@@ -550,7 +556,7 @@ let virtualLossStreak = 0;
 let hasSwatchedToLive = false;
 let virtualTradeHistory = [];
 
-// ============ ENHANCED ML VARIABLES v3 (PSF + LSTM) ============
+// ============ ENHANCED ML VARIABLES v3 (PSF + LSTM OPTIMIZED) ============
 let bayesianAlpha = 1;
 let bayesianBeta = 1;
 let markovTransitionMatrix = {};
@@ -563,18 +569,18 @@ let detectedPattern = null;
 
 // PSF Variables
 let psfPatterns = [];
-let psfWindowSize = 10; // Auto-adjusted
+let psfWindowSize = 10;
 let psfClusters = [];
 let psfPrediction = 50;
 
-// LSTM Variables
+// LSTM Variables (OPTIMIZED)
 let lstmModel = null;
 let lstmInitialized = false;
 let lstmTraining = false;
 let lstmLastTrainTime = null;
-let lstmSequenceLength = 20; // Auto-adjusted
-let lstmBatchSize = 32; // Auto-adjusted
-let lstmEpochs = 50; // Auto-adjusted
+let lstmSequenceLength = 15; // Optimized default
+let lstmBatchSize = 16; // Optimized default
+let lstmEpochs = 20; // Optimized default
 let lstmPrediction = 50;
 let lstmAccuracyScore = 0;
 let lstmLossValue = 0;
@@ -1029,7 +1035,6 @@ function resumeAutoTrade() {
     btn.style.background = '#ef4444';
     addLog("Resuming Persistent Auto-Trade...", "success");
     
-    // Auto-initialize LSTM when auto-trade starts
     if (!lstmInitialized) {
         initializeLSTM();
     }
@@ -1067,20 +1072,18 @@ function levenshtein(a, b) {
 }
 
 function autoAdjustPSFWindowSize() {
-    // Auto-adjust window size based on volatility and data size
     const volatility = calculateVolatility(extendedHistory, 100);
     
     if (volatility > 3.0) {
-        psfWindowSize = 5; // Shorter window for high volatility
+        psfWindowSize = 5;
     } else if (volatility > 2.0) {
         psfWindowSize = 8;
     } else if (volatility > 1.5) {
         psfWindowSize = 10;
     } else {
-        psfWindowSize = 15; // Longer window for stable patterns
+        psfWindowSize = 15;
     }
     
-    // Ensure we have enough data
     if (extendedHistory.length < psfWindowSize * 5) {
         psfWindowSize = Math.max(3, Math.floor(extendedHistory.length / 5));
     }
@@ -1098,8 +1101,7 @@ function buildPSFPatterns() {
         const pattern = extendedHistory.slice(i, i + windowSize);
         const nextDigit = extendedHistory[i + windowSize];
         
-        // Add recency weight
-        const recency = Math.exp(-i / 1000); // Exponential decay
+        const recency = Math.exp(-i / 1000);
         
         psfPatterns.push({ 
             pattern, 
@@ -1119,12 +1121,10 @@ function calculatePSFPrediction() {
     
     const currentPattern = digitHistory.slice(0, psfWindowSize);
     
-    // Find similar patterns using both Euclidean and Levenshtein
     const similarities = psfPatterns.map(p => {
         const euclidean = calculateEuclideanDistance(currentPattern, p.pattern);
         const levenshtein_dist = levenshtein(currentPattern, p.pattern);
         
-        // Combine both metrics
         const combinedDistance = (euclidean * 0.6) + (levenshtein_dist * 0.4);
         
         return {
@@ -1133,19 +1133,16 @@ function calculatePSFPrediction() {
         };
     });
     
-    // Sort by similarity and take top K
     similarities.sort((a, b) => a.distance - b.distance);
     const topK = Math.min(10, Math.max(3, Math.floor(psfPatterns.length * 0.02)));
     const topSimilar = similarities.slice(0, topK);
     
     if (topSimilar.length === 0) return 50;
     
-    // Weighted average prediction
     let totalWeight = 0;
     let weightedSum = 0;
     
     topSimilar.forEach(s => {
-        // Distance-based weight (closer = higher weight)
         const distanceWeight = 1 / (1 + s.distance);
         const finalWeight = distanceWeight * s.weight;
         
@@ -1156,53 +1153,47 @@ function calculatePSFPrediction() {
     
     const prediction = totalWeight > 0 ? (weightedSum / totalWeight) * 100 : 50;
     
-    // Store prediction for accuracy tracking
     modelPredictions.psf.push({ prediction });
     
     return Math.min(98, Math.max(2, prediction));
 }
 
 function updatePSFPeriodically() {
-    // Rebuild PSF patterns every 100 new digits
     if (extendedHistory.length % 100 === 0 && extendedHistory.length > 50) {
         buildPSFPatterns();
     }
 }
 
-// ============ LSTM NEURAL NETWORK FUNCTIONS ============
+// ============ LSTM NEURAL NETWORK FUNCTIONS (OPTIMIZED) ============
 
 function autoAdjustLSTMParams() {
-    // Auto-adjust LSTM parameters based on data size and volatility
     const dataSize = extendedHistory.length;
     const volatility = calculateVolatility(extendedHistory, 100);
     
-    // Sequence length
     if (dataSize < 200) {
-        lstmSequenceLength = 10;
+        lstmSequenceLength = 8;
     } else if (dataSize < 500) {
+        lstmSequenceLength = 12;
+    } else if (dataSize < 1000) {
         lstmSequenceLength = 15;
-    } else if (dataSize < 1000) {
+    } else {
         lstmSequenceLength = 20;
-    } else {
-        lstmSequenceLength = 30;
     }
     
-    // Batch size
     if (dataSize < 300) {
-        lstmBatchSize = 16;
+        lstmBatchSize = 8;
     } else if (dataSize < 1000) {
-        lstmBatchSize = 32;
+        lstmBatchSize = 16;
     } else {
-        lstmBatchSize = 64;
+        lstmBatchSize = 32;
     }
     
-    // Epochs based on volatility
     if (volatility > 3.0) {
-        lstmEpochs = 30; // Fewer epochs for noisy data
+        lstmEpochs = 15;
     } else if (volatility > 2.0) {
-        lstmEpochs = 40;
+        lstmEpochs = 20;
     } else {
-        lstmEpochs = 50; // More epochs for stable data
+        lstmEpochs = 25;
     }
     
     addLog(`LSTM Params: seq=${lstmSequenceLength}, batch=${lstmBatchSize}, epochs=${lstmEpochs}`, "info");
@@ -1219,56 +1210,59 @@ async function initializeLSTM() {
         addLog("🧠 Initializing LSTM Neural Network...", "info");
         document.getElementById('lstmStatusText').textContent = "Initializing model architecture...";
         
-        // Auto-adjust parameters
         autoAdjustLSTMParams();
         
-        // Create LSTM model
-        lstmModel = tf.sequential();
+        if (lstmModel) {
+            lstmModel.dispose();
+            lstmModel = null;
+        }
         
-        // LSTM layers with dropout for regularization
-        lstmModel.add(tf.layers.lstm({
-            units: 64,
-            returnSequences: true,
-            inputShape: [lstmSequenceLength, 1]
-        }));
-        lstmModel.add(tf.layers.dropout({ rate: 0.2 }));
+        await tf.ready();
+        addLog(`TensorFlow.js backend: ${tf.getBackend()}`, "info");
+        
+        lstmModel = tf.sequential();
         
         lstmModel.add(tf.layers.lstm({
             units: 32,
-            returnSequences: false
+            returnSequences: false,
+            inputShape: [lstmSequenceLength, 1],
+            recurrentDropout: 0.1
         }));
-        lstmModel.add(tf.layers.dropout({ rate: 0.2 }));
         
         lstmModel.add(tf.layers.dense({ units: 16, activation: 'relu' }));
+        lstmModel.add(tf.layers.dropout({ rate: 0.2 }));
         lstmModel.add(tf.layers.dense({ units: 1, activation: 'sigmoid' }));
         
+        const optimizer = tf.train.adam(0.0005);
+        
         lstmModel.compile({
-            optimizer: tf.train.adam(0.001),
+            optimizer: optimizer,
             loss: 'binaryCrossentropy',
             metrics: ['accuracy']
         });
         
-        addLog("✅ LSTM Model Architecture Created", "success");
+        addLog("✅ LSTM Model Architecture Created (Optimized Build)", "success");
         document.getElementById('lstmStatusText').textContent = "Model ready - Starting initial training...";
         
         lstmInitialized = true;
         
-        // Initial training
-        await trainLSTM();
+        setTimeout(() => {
+            trainLSTM();
+        }, 1000);
         
-        // Auto-retrain every 200 new digits
         if (!lstmRetrainInterval) {
             lstmRetrainInterval = setInterval(() => {
-                if (isAutoRunning && extendedHistory.length % 200 === 0) {
+                if (isAutoRunning && extendedHistory.length % 200 === 0 && !lstmTraining) {
                     trainLSTM();
                 }
-            }, 60000); // Check every minute
+            }, 120000);
         }
         
     } catch (error) {
         addLog(`LSTM Init Error: ${error.message}`, "error");
         console.error("LSTM Error:", error);
         document.getElementById('lstmStatusText').textContent = `Error: ${error.message}`;
+        lstmInitialized = false;
     }
 }
 
@@ -1276,94 +1270,125 @@ function prepareTrainingData() {
     const sequences = [];
     const labels = [];
     
-    // Use extended history for training
+    const maxSamples = 1000;
     const dataSource = extendedHistory.length > 500 ? extendedHistory : [...extendedHistory, ...digitHistory];
     
-    for (let i = lstmSequenceLength; i < dataSource.length; i++) {
+    let sampleCount = 0;
+    for (let i = lstmSequenceLength; i < dataSource.length && sampleCount < maxSamples; i++) {
         const sequence = dataSource.slice(i - lstmSequenceLength, i);
         const nextDigit = dataSource[i];
         
-        sequences.push(sequence.map(d => [d / 10])); // Normalize to 0-1
-        labels.push([nextDigit > 5 ? 1 : 0]); // Binary classification
+        sequences.push(sequence.map(d => [d / 10]));
+        labels.push([nextDigit > 5 ? 1 : 0]);
+        sampleCount++;
     }
     
     return { sequences, labels };
 }
 
 async function trainLSTM() {
-    if (!lstmModel || lstmTraining) return;
+    if (!lstmModel || lstmTraining) {
+        addLog("LSTM: Training already in progress or model not ready", "warn");
+        return;
+    }
+    
+    lstmTraining = true;
     
     try {
-        lstmTraining = true;
         const startTime = Date.now();
         
         addLog("🧠 LSTM Training Started...", "info");
         document.getElementById('lstmStatusText').textContent = "Training in progress...";
+        document.getElementById('lstmProgressBar').style.width = '0%';
         
         const { sequences, labels } = prepareTrainingData();
         
-        if (sequences.length < 50) {
-            addLog("LSTM: Not enough sequences for training", "warn");
+        if (sequences.length < 30) {
+            addLog("LSTM: Not enough sequences for training (need 30+)", "warn");
             lstmTraining = false;
             return;
         }
         
         lstmTrainingSamples = sequences.length;
+        addLog(`LSTM: Training on ${lstmTrainingSamples} samples`, "info");
         
-        // Convert to tensors
-        const xs = tf.tensor3d(sequences);
-        const ys = tf.tensor2d(labels);
+        let xs = null;
+        let ys = null;
         
-        // Train with callbacks for progress
-        const history = await lstmModel.fit(xs, ys, {
-            epochs: lstmEpochs,
-            batchSize: lstmBatchSize,
-            validationSplit: 0.2,
-            shuffle: true,
-            callbacks: {
-                onEpochEnd: (epoch, logs) => {
-                    const progress = ((epoch + 1) / lstmEpochs) * 100;
-                    document.getElementById('lstmProgressBar').style.width = `${progress}%`;
-                    
-                    if ((epoch + 1) % 10 === 0) {
-                        addLog(`LSTM Epoch ${epoch + 1}/${lstmEpochs} - Loss: ${logs.loss.toFixed(4)}`, "info");
+        try {
+            xs = tf.tensor3d(sequences);
+            ys = tf.tensor2d(labels);
+            
+            await tf.nextFrame();
+            
+            const history = await lstmModel.fit(xs, ys, {
+                epochs: lstmEpochs,
+                batchSize: lstmBatchSize,
+                validationSplit: 0.15,
+                shuffle: true,
+                verbose: 0,
+                callbacks: {
+                    onEpochBegin: async (epoch) => {
+                        await tf.nextFrame();
+                    },
+                    onEpochEnd: async (epoch, logs) => {
+                        const progress = ((epoch + 1) / lstmEpochs) * 100;
+                        document.getElementById('lstmProgressBar').style.width = `${progress}%`;
+                        
+                        if ((epoch + 1) % 5 === 0) {
+                            addLog(`LSTM Epoch ${epoch + 1}/${lstmEpochs} - Loss: ${logs.loss.toFixed(4)}`, "info");
+                        }
+                        
+                        await tf.nextFrame();
+                    },
+                    onTrainEnd: async () => {
+                        await tf.nextFrame();
                     }
                 }
-            }
-        });
-        
-        // Clean up tensors
-        xs.dispose();
-        ys.dispose();
-        
-        const finalLoss = history.history.loss[history.history.loss.length - 1];
-        const finalAccuracy = history.history.acc ? history.history.acc[history.history.acc.length - 1] : 0;
-        
-        lstmLossValue = finalLoss;
-        lstmAccuracyScore = finalAccuracy * 100;
-        lstmLastTrainTime = new Date();
-        
-        // Update UI
-        document.getElementById('lstmLoss').textContent = finalLoss.toFixed(4);
-        document.getElementById('lstmAccuracy').textContent = `${(finalAccuracy * 100).toFixed(1)}%`;
-        document.getElementById('lstmSamples').textContent = lstmTrainingSamples;
-        document.getElementById('lstmLastRetrain').textContent = lstmLastTrainTime.toLocaleTimeString();
-        
-        const trainingTime = ((Date.now() - startTime) / 1000).toFixed(1);
-        addLog(`✅ LSTM Training Complete (${trainingTime}s) - Loss: ${finalLoss.toFixed(4)}, Acc: ${(finalAccuracy * 100).toFixed(1)}%`, "success");
-        document.getElementById('lstmStatusText').textContent = `Trained on ${lstmTrainingSamples} samples - Ready for predictions`;
-        document.getElementById('lstmProgressBar').style.width = '100%';
-        
-        // Save model accuracy
-        modelAccuracies.lstm = lstmAccuracyScore;
+            });
+            
+            const finalLoss = history.history.loss[history.history.loss.length - 1];
+            const finalAccuracy = history.history.acc ? history.history.acc[history.history.acc.length - 1] : 
+                                 (history.history.accuracy ? history.history.accuracy[history.history.accuracy.length - 1] : 0);
+            
+            lstmLossValue = finalLoss;
+            lstmAccuracyScore = finalAccuracy * 100;
+            lstmLastTrainTime = new Date();
+            
+            document.getElementById('lstmLoss').textContent = finalLoss.toFixed(4);
+            document.getElementById('lstmAccuracy').textContent = `${(finalAccuracy * 100).toFixed(1)}%`;
+            document.getElementById('lstmSamples').textContent = lstmTrainingSamples;
+            document.getElementById('lstmLastRetrain').textContent = lstmLastTrainTime.toLocaleTimeString();
+            
+            const trainingTime = ((Date.now() - startTime) / 1000).toFixed(1);
+            addLog(`✅ LSTM Training Complete (${trainingTime}s) - Loss: ${finalLoss.toFixed(4)}, Acc: ${(finalAccuracy * 100).toFixed(1)}%`, "success");
+            document.getElementById('lstmStatusText').textContent = `Trained on ${lstmTrainingSamples} samples - Ready`;
+            document.getElementById('lstmProgressBar').style.width = '100%';
+            
+            modelAccuracies.lstm = lstmAccuracyScore;
+            
+        } finally {
+            if (xs) xs.dispose();
+            if (ys) ys.dispose();
+            
+            await tf.nextFrame();
+        }
         
         lstmTraining = false;
         
     } catch (error) {
+        lstmTraining = false;
         addLog(`LSTM Training Error: ${error.message}`, "error");
         console.error("LSTM Training Error:", error);
-        document.getElementById('lstmStatusText').textContent = `Training error: ${error.message}`;
-        lstmTraining = false;
+        document.getElementById('lstmStatusText').textContent = `Training failed: ${error.message}`;
+        document.getElementById('lstmProgressBar').style.width = '0%';
+        
+        if (error.message.includes('memory') || error.message.includes('OOM')) {
+            addLog("Memory error detected - reducing LSTM complexity...", "warn");
+            lstmEpochs = Math.max(10, Math.floor(lstmEpochs * 0.5));
+            lstmBatchSize = Math.max(4, Math.floor(lstmBatchSize * 0.5));
+            addLog(`Reduced to: epochs=${lstmEpochs}, batch=${lstmBatchSize}`, "warn");
+        }
     }
 }
 
@@ -1372,21 +1397,23 @@ async function calculateLSTMPrediction() {
         return 50;
     }
     
+    if (lstmTraining) {
+        return lstmPrediction;
+    }
+    
+    let input = null;
+    let prediction = null;
+    
     try {
         const sequence = digitHistory.slice(0, lstmSequenceLength);
         const normalizedSeq = sequence.map(d => [d / 10]);
         
-        const input = tf.tensor3d([normalizedSeq]);
-        const prediction = lstmModel.predict(input);
+        input = tf.tensor3d([normalizedSeq]);
+        prediction = lstmModel.predict(input);
         const predValue = (await prediction.data())[0];
-        
-        // Clean up
-        input.dispose();
-        prediction.dispose();
         
         const confidence = predValue * 100;
         
-        // Store for accuracy tracking
         modelPredictions.lstm.push({ prediction: confidence });
         
         lstmPrediction = confidence;
@@ -1395,6 +1422,9 @@ async function calculateLSTMPrediction() {
     } catch (error) {
         console.error("LSTM Prediction Error:", error);
         return 50;
+    } finally {
+        if (input) input.dispose();
+        if (prediction) prediction.dispose();
     }
 }
 
@@ -1577,11 +1607,9 @@ function calculateAdaptiveThreshold() {
 }
 
 async function calculateEnsemblePrediction(heuristicConf, bayesianProb, markovProb, volatility) {
-    // Calculate PSF and LSTM predictions
     const psfProb = calculatePSFPrediction();
     const lstmProb = await calculateLSTMPrediction();
     
-    // Dynamic weight calculation based on model accuracies
     let weights = {
         heuristic: 0.20,
         bayesian: 0.20,
@@ -1607,7 +1635,6 @@ async function calculateEnsemblePrediction(heuristicConf, bayesianProb, markovPr
         weights.lstm = 0.15 + lstmWeight * 0.25;
     }
     
-    // Adjust weights based on volatility
     if (volatility > 3.0) {
         weights.bayesian += 0.10;
         weights.lstm += 0.10;
@@ -1715,7 +1742,7 @@ function updateModelPerformanceUI() {
     
     if (modelAccuracies.heuristic > 0) {
         heuristicEl.innerHTML = `<span style="opacity:0.6">Heuristic</span><b style="color:#22c55e">${modelAccuracies.heuristic.toFixed(0)}%</b>`;
-        heuristicEl.className = modelAccuracies.heuristic >= 55 ? 'model-perf-high' : (modelAccuracies.heuristic < 45 ? 'model-perf-low': '');
+        heuristicEl.className = modelAccuracies.heuristic >= 55 ? 'model-perf-high' : (modelAccuracies.heuristic < 45 ? 'model-perf-low' : '');
     }
     
     if (modelAccuracies.bayesian > 0) {
@@ -1759,10 +1786,8 @@ function addDigitToAnalyzer(digit) {
   volatilityWindow.unshift(digit);
   if (volatilityWindow.length > 100) volatilityWindow.pop();
   
-  // Update PSF patterns periodically
   updatePSFPeriodically();
   
-  // Auto-initialize LSTM when we have enough data
   if (!lstmInitialized && extendedHistory.length >= 100 && isAutoRunning) {
     initializeLSTM();
   }
@@ -1970,14 +1995,11 @@ async function predictNextDigit() {
   document.getElementById('volatilityScore').textContent = volatilityLabel;
   
   let gravityBonus = 0;
-  let trendLabel = 'Stable';
   if (digitHistory.length >= 3) {
       if (digitHistory[0] > digitHistory[1] && digitHistory[1] > digitHistory[2]) {
           gravityBonus = 15;
-          trendLabel = 'Rising';
       } else if (digitHistory[0] < digitHistory[1] && digitHistory[1] < digitHistory[2]) {
           gravityBonus = -10;
-          trendLabel = 'Falling';
       }
   }
   
@@ -2025,7 +2047,7 @@ async function predictNextDigit() {
   
   document.getElementById('nextDigitPrediction').textContent = predText;
   document.getElementById('nextDigitPrediction').style.color = predText === 'OVER 5' ? '#22c55e' : '#f59e0b';
-  document.getElementById('predictionConfidence').textContent = `${lastPredictionConfidence.toFixed(0)}% (Ensemble v3)`;
+  document.getElementById('predictionConfidence').textContent = `${lastPredictionConfidence.toFixed(0)}% (Ensemble v3 Optimized)`;
   document.getElementById('freqScore').textContent = weightedFreq.toFixed(0) + '%';
   document.getElementById('cycleScore').textContent = overGap;
   
@@ -2049,7 +2071,6 @@ function placeTrade() {
   const marketValue = currentMarketValue;
   const type = isReverseTradeActive ? 'DIGITUNDER' : 'DIGITOVER';
   
-  // Virtual trade simulation
   if (isCurrentlyVirtualMode()) {
       addLog(`🎮 VIRTUAL TRADE SIMULATED (Not placing real trade)`, "warn");
       
@@ -2080,7 +2101,6 @@ function placeTrade() {
       return;
   }
   
-  // Real trade
   let confidenceMsg = '';
   if (currentConfidenceMode === 'pattern' && detectedPattern) {
       const maxNextLikely = parseInt(document.getElementById('patternEnsembleMax').value) || 0;
@@ -2129,16 +2149,14 @@ function toggleAuto() {
     localStorage.setItem('isAutoRunning', 'true');
     localStorage.setItem('autoStartTime', autoStartTime);
     shutdownUI.style.display = 'block';
-    addLog("ML Auto-Trade v3 Enabled (PSF + LSTM).", "success");
+    addLog("ML Auto-Trade v3 Enabled (PSF + LSTM Optimized).", "success");
     btn.textContent = 'Stop Auto'; 
     btn.style.background = '#ef4444';
     
-    // Initialize LSTM on auto-start
     if (!lstmInitialized && extendedHistory.length >= 100) {
         initializeLSTM();
     }
     
-    // Build PSF patterns
     if (extendedHistory.length >= 50) {
         buildPSFPatterns();
     }
@@ -2380,7 +2398,6 @@ function resetStats() {
     stats = { trades: 0, wins: 0, losses: 0, profit: 0 }; 
     recentWinRates = [];
     
-    // Reset virtual trade tracking
     virtualLossStreak = 0;
     hasSwatchedToLive = false;
     updateVirtualTradeUI();
@@ -2420,7 +2437,7 @@ function manualTrade() {
 
 // ============ INITIALIZATION ============
 window.onload = () => {
-  addLog("Initializing ML Enhanced Trading Bot v3 (PSF + LSTM + Virtual Trade)...", "info");
+  addLog("Initializing ML Enhanced Trading Bot v3 (PSF + LSTM Optimized)...", "info");
   loadSettings();
   
   const ensembleMaxInput = document.getElementById('patternEnsembleMax');
@@ -2445,7 +2462,6 @@ window.onload = () => {
       }
   });
   
-  // Virtual loss threshold listener
   const virtualThresholdInput = document.getElementById('virtualLossThreshold');
   if (virtualThresholdInput) {
       virtualThresholdInput.addEventListener('input', () => {
@@ -2466,21 +2482,22 @@ window.onload = () => {
       setTimeout(connect, 1000); 
   }
   
-  addLog("✅ ML v3 Enhancements Loaded:", "success");
+  addLog("✅ ML v3 Enhancements Loaded (Optimized Build):", "success");
   addLog("- Extended history: 5000 ticks", "info");
   addLog("- Outlier detection & smoothing active", "info");
   addLog("- 2nd-order Markov chain enabled", "info");
   addLog("- Fuzzy pattern matching with Levenshtein", "info");
   addLog("- PSF (Pattern Sequence Forecasting) implemented", "info");
-  addLog("- LSTM Neural Network with auto-training", "info");
-  addLog("- Auto-adjusted hyperparameters (window, batch, epochs)", "info");
+  addLog("- LSTM Neural Network (32-unit optimized build)", "info");
+  addLog("- Auto-adjusted hyperparameters (stability-first)", "info");
   addLog("- Dynamic ensemble weighting based on performance", "info");
   addLog("- Model performance tracking for all 5 models", "info");
   addLog("- Pattern decay & pruning", "info");
   addLog("- Pattern Mode uses Next Likely % for filters", "info");
   addLog("- 🎮 Virtual Trade Mode with auto-switch feature", "success");
-  addLog("- Auto-retrain LSTM every 200 digits", "info");
+  addLog("- Auto-retrain LSTM every 200 digits (stable)", "info");
   addLog("- Auto-rebuild PSF patterns every 100 digits", "info");
+  addLog("- Memory-optimized tensor disposal", "info");
   addLog("Ready to trade with PSF + LSTM enhanced accuracy!", "success");
 };
 
@@ -2489,13 +2506,11 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     localStorage.removeItem('isAutoRunning');
     localStorage.removeItem('autoStartTime');
     
-    // Clear LSTM retrain interval
     if (lstmRetrainInterval) {
         clearInterval(lstmRetrainInterval);
         lstmRetrainInterval = null;
     }
     
-    // Dispose LSTM model to free memory
     if (lstmModel) {
         lstmModel.dispose();
         lstmModel = null;
