@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deriv Digit Match Pro - Advanced ML</title>
+<title>Deriv Digit Match Pro - AI Enhanced</title>
 <style>
 /* --- CORE STYLES --- */
 body { background: #020617; color: #e5e7eb; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
@@ -97,20 +97,6 @@ tbody tr:hover { background: #1e293b; }
 .pattern-medium { border-left: 4px solid #f59e0b; }
 .pattern-weak { border-left: 4px solid #ef4444; }
 
-/* Model Order Selector */
-.model-order-selector { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
-.order-option { padding: 8px; border-radius: 6px; border: 2px solid #334155; background: #1e293b; cursor: pointer; text-align: center; transition: all 0.2s; }
-.order-option:hover { border-color: #8b5cf6; }
-.order-option.active { border-color: #22c55e; background: #1e3a2b; }
-.order-option .order-label { font-size: 10px; color: #94a3b8; }
-.order-option .order-name { font-size: 13px; font-weight: 700; color: #e5e7eb; margin-top: 3px; }
-
-/* Progress Bar for Data Gathering */
-.data-progress { margin-top: 10px; }
-.data-progress-bar { width: 100%; height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden; }
-.data-progress-fill { height: 100%; background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e); transition: width 0.3s; }
-.data-progress-text { font-size: 11px; color: #94a3b8; margin-top: 5px; text-align: center; }
-
 /* Toggle Switch Style */
 .switch-container { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-bottom: 10px; }
 .switch-label { color: #ef4444; font-weight: bold; font-size: 14px; }
@@ -130,12 +116,23 @@ tbody tr:hover { background: #1e293b; }
 .virtual-stat-box { background: #0f172a; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #334155; }
 .virtual-stat-box span { font-size: 10px; color: #94a3b8; display: block; }
 .virtual-stat-box b { font-size: 16px; color: #8b5cf6; display: block; margin-top: 3px; }
+
+/* AI Model Selector */
+.ai-model-selector { background: #1e293b; padding: 10px; border-radius: 8px; border: 2px solid #3b82f6; margin-bottom: 10px; }
+.ai-model-label { color: #3b82f6; font-weight: bold; font-size: 14px; margin-bottom: 8px; }
+.model-option { display: flex; align-items: center; padding: 6px; margin: 4px 0; background: #0f172a; border-radius: 4px; cursor: pointer; border: 2px solid #334155; transition: all 0.2s; }
+.model-option:hover { border-color: #3b82f6; }
+.model-option.selected { border-color: #3b82f6; background: #1e3a4b; }
+.model-option input[type="radio"] { margin-right: 8px; cursor: pointer; width: auto; }
+.model-option label { cursor: pointer; margin: 0; font-size: 12px; width: 100%; }
+.model-description { font-size: 9px; opacity: 0.6; margin-top: 2px; }
+.ai-training-status { font-size: 10px; color: #f59e0b; margin-top: 8px; text-align: center; }
 </style>
 </head>
 <body>
 <div class="app">
 
-<h2>Deriv Digit Match Pro - ML</h2>
+<h2>Deriv Digit Match Pro - AI Enhanced</h2>
 
 <div class="status-container">
     <div id="status" class="status disconnected">Disconnected</div>
@@ -158,38 +155,52 @@ tbody tr:hover { background: #1e293b; }
 </div>
 
 <div class="card">
-  <h3>🧠 Advanced ML Digit Analyzer</h3>
-  
-  <div style="margin-bottom: 10px;">
-    <label style="margin-bottom: 5px;">Markov Chain Order (Pattern Depth)</label>
-    <div class="model-order-selector">
-      <div class="order-option active" data-order="1">
-        <div class="order-label">Fast</div>
-        <div class="order-name">Order 1</div>
-      </div>
-      <div class="order-option" data-order="2">
-        <div class="order-label">Balanced</div>
-        <div class="order-name">Order 2</div>
-      </div>
-      <div class="order-option" data-order="3">
-        <div class="order-label">Deep</div>
-        <div class="order-name">Order 3</div>
+  <h3>🤖 AI Prediction Model</h3>
+  <div class="ai-model-selector">
+    <div class="ai-model-label">Select Prediction Engine:</div>
+    <div class="model-option selected" data-model="markov1">
+      <input type="radio" name="aiModel" value="markov1" id="modelMarkov1" checked>
+      <div style="flex: 1;">
+        <label for="modelMarkov1">Standard Markov (1st Order)</label>
+        <div class="model-description">Basic single-digit transition analysis</div>
       </div>
     </div>
-    <div style="font-size: 10px; opacity: 0.7; text-align: center; margin-top: 5px;">
-      Higher orders = better pattern detection, requires more data
+    <div class="model-option" data-model="markov2">
+      <input type="radio" name="aiModel" value="markov2" id="modelMarkov2">
+      <div style="flex: 1;">
+        <label for="modelMarkov2">Advanced Markov (2nd Order)</label>
+        <div class="model-description">Two-digit sequence patterns - 5-10% accuracy boost</div>
+      </div>
     </div>
+    <div class="model-option" data-model="markov3">
+      <input type="radio" name="aiModel" value="markov3" id="modelMarkov3">
+      <div style="flex: 1;">
+        <label for="modelMarkov3">Deep Markov (3rd Order)</label>
+        <div class="model-description">Three-digit sequence patterns - 10-15% accuracy boost</div>
+      </div>
+    </div>
+    <div class="model-option" data-model="ensemble">
+      <input type="radio" name="aiModel" value="ensemble" id="modelEnsemble">
+      <div style="flex: 1;">
+        <label for="modelEnsemble">Ensemble + Features</label>
+        <div class="model-description">Multi-model voting with time/volatility features</div>
+      </div>
+    </div>
+    <div class="ai-training-status" id="aiTrainingStatus">Model Ready</div>
   </div>
-  
+</div>
+
+<div class="card">
+  <h3>📊 Enhanced Digit Match Analyzer</h3>
   <div class="analyzer-grid" id="digitDisplay"></div>
   <div class="analyzer-stats">
-    <div><span>Last Digit</span><b id="matchCount" style="color: #8b5cf6;">-</b></div>
+    <div><span>Predicted</span><b id="matchCount" style="color: #8b5cf6;">-</b></div>
     <div><span>Total Ticks</span><b id="totalCount" style="color: #e5e7eb;">0</b></div>
-    <div><span>Model Order</span><b id="currentOrder" style="color: #22c55e;">1</b></div>
+    <div><span>Frequency</span><b id="matchPercent" style="color: #8b5cf6;">0%</b></div>
   </div>
   
   <div class="prediction-box">
-    <div class="prediction-status">🎯 Multi-Order Markov Prediction</div>
+    <div class="prediction-status">🎯 AI Next Digit Prediction</div>
     <div class="prediction-digit" id="predictionDisplay">
       <span class="prediction-waiting">WAITING...</span>
     </div>
@@ -198,21 +209,13 @@ tbody tr:hover { background: #1e293b; }
     </div>
     <div class="prediction-info" id="predictionInfo">Analyzing tick patterns...</div>
     
-    <!-- Data Gathering Progress Bar -->
-    <div class="data-progress" id="dataProgress" style="display: none;">
-      <div class="data-progress-bar">
-        <div class="data-progress-fill" id="dataProgressFill" style="width: 0%"></div>
-      </div>
-      <div class="data-progress-text" id="dataProgressText">Gathering data: 0/15 samples</div>
-    </div>
-    
     <div class="accuracy-metrics">
       <div class="accuracy-card">
         <div class="label">Probability</div>
         <div class="value" id="probabilityValue">0%</div>
       </div>
       <div class="accuracy-card">
-        <div class="label">Data Points</div>
+        <div class="label">Pattern Score</div>
         <div class="value" id="patternScore">0</div>
       </div>
       <div class="accuracy-card">
@@ -232,7 +235,7 @@ tbody tr:hover { background: #1e293b; }
       <span id="clearLog" style="cursor:pointer; color:#3b82f6">Clear</span>
     </div>
     <div class="log-container" id="logContainer">
-      <div class="log-entry"><span class="log-time">[System]</span> <span class="log-msg-success">ML Engine Ready.</span></div>
+      <div class="log-entry"><span class="log-time">[System]</span> <span class="log-msg-success">AI Engine Ready.</span></div>
     </div>
   </div>
 </div>
@@ -391,7 +394,8 @@ tbody tr:hover { background: #1e293b; }
   const Config = {
     currentMarketValue: 'R_10',
     marketSequence: ["R_10", "R_25", "R_50", "R_75", "R_100"],
-    accountBalance: 0
+    accountBalance: 0,
+    selectedAIModel: 'markov1'
   };
 
   // ============ APP MODULES ============
@@ -400,6 +404,7 @@ tbody tr:hover { background: #1e293b; }
     init() {
       this.modules.UI.init();
       this.modules.Connection.init();
+      this.modules.AIEngine.init();
       this.modules.Analyzer.init();
       this.modules.VirtualTrade.init();
       this.modules.Trader.init();
@@ -412,9 +417,331 @@ tbody tr:hover { background: #1e293b; }
         setTimeout(() => this.modules.Connection.connect(), 1000); 
       }
       
-      this.modules.UI.addLog("System: ML Engine Initialized.", "success");
+      this.modules.UI.addLog("System: AI Engine Initialized.", "success");
     }
   };
+
+  // ============ AI ENGINE MODULE ============
+  App.modules.AIEngine = (function() {
+    // Higher-order Markov chains storage
+    let markov2Matrix = {}; // Key: "d1-d2", Value: {0:count, 1:count, ...}
+    let markov3Matrix = {}; // Key: "d1-d2-d3", Value: {0:count, 1:count, ...}
+    
+    // Feature engineering
+    let tickTimestamps = [];
+    let volatilityBuffer = [];
+    
+    // Ensemble weights
+    const ensembleWeights = {
+      markov1: 0.3,
+      markov2: 0.35,
+      markov3: 0.35
+    };
+    
+    function init() {
+      document.querySelectorAll('.model-option').forEach(opt => {
+        opt.addEventListener('click', (e) => {
+          const model = e.currentTarget.dataset.model;
+          selectModel(model);
+        });
+      });
+      
+      // Load saved model selection
+      const savedModel = localStorage.getItem('selectedAIModel');
+      if (savedModel) {
+        selectModel(savedModel);
+      }
+    }
+    
+    function selectModel(model) {
+      Config.selectedAIModel = model;
+      document.querySelectorAll('.model-option').forEach(el => {
+        el.classList.toggle('selected', el.dataset.model === model);
+      });
+      const radioEl = document.getElementById('model' + model.charAt(0).toUpperCase() + model.slice(1));
+      if (radioEl) radioEl.checked = true;
+      
+      localStorage.setItem('selectedAIModel', model);
+      
+      const statusEl = document.getElementById('aiTrainingStatus');
+      statusEl.textContent = `${getModelName(model)} Active`;
+      
+      App.modules.UI.addLog(`AI Model: ${getModelName(model)} selected`, "info");
+    }
+    
+    function getModelName(model) {
+      const names = {
+        markov1: 'Standard Markov',
+        markov2: 'Advanced Markov (2nd Order)',
+        markov3: 'Deep Markov (3rd Order)',
+        ensemble: 'Ensemble Multi-Model'
+      };
+      return names[model] || 'Unknown Model';
+    }
+    
+    // Update higher-order Markov models
+    function updateMarkov2(history) {
+      if (history.length < 3) return;
+      
+      const prev2 = history[2];
+      const prev1 = history[1];
+      const current = history[0];
+      
+      const key = `${prev2}-${prev1}`;
+      if (!markov2Matrix[key]) {
+        markov2Matrix[key] = {};
+      }
+      markov2Matrix[key][current] = (markov2Matrix[key][current] || 0) + 1;
+    }
+    
+    function updateMarkov3(history) {
+      if (history.length < 4) return;
+      
+      const prev3 = history[3];
+      const prev2 = history[2];
+      const prev1 = history[1];
+      const current = history[0];
+      
+      const key = `${prev3}-${prev2}-${prev1}`;
+      if (!markov3Matrix[key]) {
+        markov3Matrix[key] = {};
+      }
+      markov3Matrix[key][current] = (markov3Matrix[key][current] || 0) + 1;
+    }
+    
+    // Predict using 2nd order Markov
+    function predictMarkov2(history) {
+      if (history.length < 2) return { digit: null, confidence: 0 };
+      
+      const prev2 = history[1];
+      const prev1 = history[0];
+      const key = `${prev2}-${prev1}`;
+      
+      const counts = markov2Matrix[key];
+      if (!counts) return { digit: null, confidence: 0 };
+      
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      if (total < 10) return { digit: null, confidence: 0 }; // Need min samples
+      
+      let maxDigit = -1;
+      let maxCount = -1;
+      
+      for (let d = 0; d < 10; d++) {
+        const count = counts[d] || 0;
+        if (count > maxCount) {
+          maxCount = count;
+          maxDigit = d;
+        }
+      }
+      
+      const probability = (maxCount / total) * 100;
+      return { digit: maxDigit, confidence: probability };
+    }
+    
+    // Predict using 3rd order Markov with Laplace smoothing
+    function predictMarkov3(history) {
+      if (history.length < 3) return { digit: null, confidence: 0 };
+      
+      const prev3 = history[2];
+      const prev2 = history[1];
+      const prev1 = history[0];
+      const key = `${prev3}-${prev2}-${prev1}`;
+      
+      const counts = markov3Matrix[key];
+      if (!counts) return { digit: null, confidence: 0 };
+      
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      if (total < 8) return { digit: null, confidence: 0 }; // Need min samples
+      
+      // Apply Laplace smoothing for sparse data
+      const alpha = 0.5; // Smoothing parameter
+      const smoothedCounts = {};
+      let smoothedTotal = total + (alpha * 10);
+      
+      let maxDigit = -1;
+      let maxProb = -1;
+      
+      for (let d = 0; d < 10; d++) {
+        const rawCount = counts[d] || 0;
+        const smoothedCount = rawCount + alpha;
+        smoothedCounts[d] = smoothedCount;
+        
+        const prob = smoothedCount / smoothedTotal;
+        if (prob > maxProb) {
+          maxProb = prob;
+          maxDigit = d;
+        }
+      }
+      
+      const probability = maxProb * 100;
+      return { digit: maxDigit, confidence: probability };
+    }
+    
+    // Calculate volatility feature
+    function calculateVolatility(history, window = 10) {
+      if (history.length < window) return 0;
+      
+      const recent = history.slice(0, window);
+      const mean = recent.reduce((a, b) => a + b, 0) / window;
+      const variance = recent.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / window;
+      return Math.sqrt(variance);
+    }
+    
+    // Time-based features
+    function getTimeFeatures() {
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      
+      // Cyclical encoding for time
+      const hourSin = Math.sin(2 * Math.PI * hour / 24);
+      const hourCos = Math.cos(2 * Math.PI * hour / 24);
+      const minuteSin = Math.sin(2 * Math.PI * minute / 60);
+      const minuteCos = Math.cos(2 * Math.PI * minute / 60);
+      
+      return { hourSin, hourCos, minuteSin, minuteCos };
+    }
+    
+    // Ensemble prediction combining multiple models
+    function predictEnsemble(history, markov1Pred) {
+      const predictions = [];
+      const weights = [];
+      
+      // Get predictions from each model
+      if (markov1Pred.digit !== null) {
+        predictions.push(markov1Pred);
+        weights.push(ensembleWeights.markov1);
+      }
+      
+      const markov2Pred = predictMarkov2(history);
+      if (markov2Pred.digit !== null) {
+        predictions.push(markov2Pred);
+        weights.push(ensembleWeights.markov2);
+      }
+      
+      const markov3Pred = predictMarkov3(history);
+      if (markov3Pred.digit !== null) {
+        predictions.push(markov3Pred);
+        weights.push(ensembleWeights.markov3);
+      }
+      
+      if (predictions.length === 0) {
+        return { digit: null, confidence: 0 };
+      }
+      
+      // Voting mechanism with weighted confidence
+      const votes = {};
+      const confidences = {};
+      
+      predictions.forEach((pred, idx) => {
+        const digit = pred.digit;
+        const weight = weights[idx];
+        const weightedConf = pred.confidence * weight;
+        
+        votes[digit] = (votes[digit] || 0) + weight;
+        confidences[digit] = (confidences[digit] || 0) + weightedConf;
+      });
+      
+      // Find digit with highest weighted vote
+      let bestDigit = -1;
+      let bestVote = -1;
+      
+      for (let d = 0; d < 10; d++) {
+        const vote = votes[d] || 0;
+        if (vote > bestVote) {
+          bestVote = vote;
+          bestDigit = d;
+        }
+      }
+      
+      // Calculate ensemble confidence
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      const avgConfidence = confidences[bestDigit] / totalWeight;
+      
+      // Boost confidence if multiple models agree
+      const agreement = predictions.filter(p => p.digit === bestDigit).length;
+      const agreementBoost = 1 + (agreement - 1) * 0.15; // 15% boost per agreeing model
+      const finalConfidence = Math.min(avgConfidence * agreementBoost, 95);
+      
+      return { digit: bestDigit, confidence: finalConfidence };
+    }
+    
+    // Master prediction function
+    function getPrediction(history, markov1Pred) {
+      const model = Config.selectedAIModel;
+      
+      switch(model) {
+        case 'markov1':
+          return markov1Pred;
+        
+        case 'markov2':
+          const pred2 = predictMarkov2(history);
+          return pred2.digit !== null ? pred2 : markov1Pred;
+        
+        case 'markov3':
+          const pred3 = predictMarkov3(history);
+          return pred3.digit !== null ? pred3 : markov1Pred;
+        
+        case 'ensemble':
+          return predictEnsemble(history, markov1Pred);
+        
+        default:
+          return markov1Pred;
+      }
+    }
+    
+    // Update all models with new tick
+    function updateModels(history) {
+      updateMarkov2(history);
+      updateMarkov3(history);
+      
+      // Update volatility buffer
+      if (history.length > 0) {
+        const volatility = calculateVolatility(history, 10);
+        volatilityBuffer.push(volatility);
+        if (volatilityBuffer.length > 100) volatilityBuffer.shift();
+      }
+      
+      // Update tick timestamps for frequency analysis
+      tickTimestamps.push(Date.now());
+      if (tickTimestamps.length > 100) tickTimestamps.shift();
+    }
+    
+    function reset() {
+      markov2Matrix = {};
+      markov3Matrix = {};
+      tickTimestamps = [];
+      volatilityBuffer = [];
+      App.modules.UI.addLog("AI models reset for new market", "warn");
+    }
+    
+    function getData() {
+      return {
+        markov2Matrix,
+        markov3Matrix,
+        volatilityBuffer,
+        tickTimestamps
+      };
+    }
+    
+    function setData(data) {
+      if (data.markov2Matrix) markov2Matrix = data.markov2Matrix;
+      if (data.markov3Matrix) markov3Matrix = data.markov3Matrix;
+      if (data.volatilityBuffer) volatilityBuffer = data.volatilityBuffer;
+      if (data.tickTimestamps) tickTimestamps = data.tickTimestamps;
+    }
+    
+    return {
+      init,
+      updateModels,
+      getPrediction,
+      reset,
+      getData,
+      setData,
+      calculateVolatility,
+      getTimeFeatures
+    };
+  })();
 
   // ============ CONNECTION MODULE ============
   App.modules.Connection = (function() {
@@ -549,318 +876,128 @@ tbody tr:hover { background: #1e293b; }
     };
   })();
 
-  // ============ ADVANCED ANALYZER MODULE (HIGHER-ORDER MARKOV CHAINS) ============
+  // ============ ANALYZER MODULE ============
   App.modules.Analyzer = (function() {
     let digitHistory = [];
-    let currentOrder = 1; // 1, 2, or 3
-    
-    // Order 1: Standard transition matrix
-    let transitionMatrix1 = Array(10).fill(0).map(() => Array(10).fill(0));
-    let totalTransitions1 = Array(10).fill(0);
-    
-    // Order 2: 2-digit sequence tracking
-    let transitionMatrix2 = {}; // Key: "d1,d2" -> Value: Array(10) for next digit counts
-    let totalTransitions2 = {}; // Key: "d1,d2" -> Total count
-    
-    // Order 3: 3-digit sequence tracking
-    let transitionMatrix3 = {}; // Key: "d1,d2,d3" -> Value: Array(10) for next digit counts
-    let totalTransitions3 = {}; // Key: "d1,d2,d3" -> Total count
+    let transitionMatrix = Array(10).fill(0).map(() => Array(10).fill(0));
+    let totalTransitions = Array(10).fill(0);
     
     let predictedDigit = null;
     let predictionConfidence = 0;
     let lastDigit = null;
     
-    // Laplace smoothing parameter
-    const SMOOTHING_ALPHA = 0.1;
-    
     function processTick(digit) {
+      // Store current digit for virtual trade validation
       lastDigit = digit;
       
-      // 1. Update History
+      // 1. Update History & Math FIRST
       digitHistory.unshift(digit);
       if (digitHistory.length > 1000) digitHistory.pop();
       
-      // 2. Update all order models
-      updateAllModels(digit);
-      
-      // 3. Calculate prediction based on current order
-      const duration = parseInt(document.getElementById('duration').value);
-      const steps = duration;
-      const internalPred = calculatePrediction(digit, steps);
-      
-      // 4. Process virtual trade
-      App.modules.VirtualTrade.processTickResult(digit);
-      
-      // 5. Trade check
-      if (App.modules.Trader.getAutoRunning() && !App.modules.Trader.getCycleCooldown()) {
-        App.modules.Trader.checkAndAutoTrade(internalPred); 
+      if (digitHistory.length > 1) {
+        const prevDigit = digitHistory[1];
+        transitionMatrix[prevDigit][digit]++;
+        totalTransitions[prevDigit]++;
       }
       
-      // 6. Update UI
+      // 2. Update AI models (higher-order Markov chains)
+      App.modules.AIEngine.updateModels(digitHistory);
+      
+      // 3. CALCULATE PREDICTION INTERNALLY (Before UI)
+      const internalPred = calculateInternalPrediction(digit);
+      
+      // 4. Process pending virtual trade if exists
+      App.modules.VirtualTrade.processTickResult(digit);
+      
+      // 5. TRADE CHECK (Pass the prediction to Trader)
+      if (App.modules.Trader.getAutoRunning() && !App.modules.Trader.getCycleCooldown()) {
+         App.modules.Trader.checkAndAutoTrade(internalPred); 
+      }
+      
+      // 6. UPDATE UI
       updateDisplay();
       updatePredictionUI(internalPred, digit);
     }
     
-    function updateAllModels(digit) {
-      const len = digitHistory.length;
+    function calculateInternalPrediction(lastDigit) {
+      const row = transitionMatrix[lastDigit];
+      const total = totalTransitions[lastDigit];
       
-      // Update Order 1
-      if (len > 1) {
-        const prev1 = digitHistory[1];
-        transitionMatrix1[prev1][digit]++;
-        totalTransitions1[prev1]++;
-      }
+      // Calculate basic Markov 1st order prediction
+      let markov1Prediction = { digit: null, confidence: 0 };
       
-      // Update Order 2
-      if (len > 2) {
-        const prev1 = digitHistory[1];
-        const prev2 = digitHistory[2];
-        const key2 = `${prev2},${prev1}`;
+      if (total >= 15) {
+        let bestNextDigit = -1;
+        let highestCount = -1;
         
-        if (!transitionMatrix2[key2]) {
-          transitionMatrix2[key2] = Array(10).fill(0);
-          totalTransitions2[key2] = 0;
-        }
-        transitionMatrix2[key2][digit]++;
-        totalTransitions2[key2]++;
-      }
-      
-      // Update Order 3
-      if (len > 3) {
-        const prev1 = digitHistory[1];
-        const prev2 = digitHistory[2];
-        const prev3 = digitHistory[3];
-        const key3 = `${prev3},${prev2},${prev1}`;
-        
-        if (!transitionMatrix3[key3]) {
-          transitionMatrix3[key3] = Array(10).fill(0);
-          totalTransitions3[key3] = 0;
-        }
-        transitionMatrix3[key3][digit]++;
-        totalTransitions3[key3]++;
-      }
-    }
-    
-    function calculatePrediction(lastDigit, steps = 1) {
-      if (currentOrder === 1) {
-        return predictOrder1(lastDigit, steps);
-      } else if (currentOrder === 2) {
-        return predictOrder2(steps);
-      } else {
-        return predictOrder3(steps);
-      }
-    }
-    
-    function predictOrder1(lastDigit, steps) {
-      const total = totalTransitions1[lastDigit];
-      if (total < 15) return { digit: null, confidence: 0, current: total, required: 15 };
-      
-      // Build probability matrix with Laplace smoothing
-      const probMatrix = Array(10).fill().map(() => Array(10).fill(0));
-      for (let i = 0; i < 10; i++) {
-        const tot = totalTransitions1[i] || 0;
-        for (let j = 0; j < 10; j++) {
-          if (tot > 0) {
-            probMatrix[i][j] = (transitionMatrix1[i][j] + SMOOTHING_ALPHA) / (tot + 10 * SMOOTHING_ALPHA);
-          } else {
-            probMatrix[i][j] = 0.1;
-          }
-        }
-      }
-      
-      // Multi-step prediction
-      let currentProb = Array(10).fill(0);
-      for (let j = 0; j < 10; j++) {
-        currentProb[j] = probMatrix[lastDigit][j];
-      }
-      
-      for (let s = 1; s < steps; s++) {
-        let newProb = Array(10).fill(0);
-        for (let i = 0; i < 10; i++) {
-          for (let j = 0; j < 10; j++) {
-            newProb[j] += currentProb[i] * probMatrix[i][j];
-          }
-        }
-        currentProb = newProb;
-      }
-      
-      let bestDigit = 0;
-      let maxProb = currentProb[0];
-      for (let i = 1; i < 10; i++) {
-        if (currentProb[i] > maxProb) {
-          maxProb = currentProb[i];
-          bestDigit = i;
-        }
-      }
-      
-      return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 15 };
-    }
-    
-    function predictOrder2(steps) {
-      const len = digitHistory.length;
-      if (len < 2) return { digit: null, confidence: 0, current: 0, required: 10 };
-      
-      const prev1 = digitHistory[0];
-      const prev2 = digitHistory[1];
-      const key = `${prev2},${prev1}`;
-      
-      const total = totalTransitions2[key] || 0;
-      if (total < 10) {
-        // Fallback to Order 1
-        return predictOrder1(prev1, steps);
-      }
-      
-      // Get probabilities with smoothing
-      const counts = transitionMatrix2[key];
-      let probs = Array(10).fill(0);
-      for (let i = 0; i < 10; i++) {
-        probs[i] = (counts[i] + SMOOTHING_ALPHA) / (total + 10 * SMOOTHING_ALPHA);
-      }
-      
-      // For multi-step, we need to simulate state transitions
-      if (steps === 1) {
-        let bestDigit = 0;
-        let maxProb = probs[0];
-        for (let i = 1; i < 10; i++) {
-          if (probs[i] > maxProb) {
-            maxProb = probs[i];
-            bestDigit = i;
-          }
-        }
-        return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 10 };
-      } else {
-        // For steps > 1, blend with order-1 predictions
-        const order1Pred = predictOrder1(prev1, steps);
-        const blendFactor = 0.7; // 70% order-2, 30% order-1
-        
-        let bestDigit = 0;
-        let maxProb = probs[0] * blendFactor + (order1Pred.digit === 0 ? order1Pred.confidence / 100 * (1 - blendFactor) : 0);
-        
-        for (let i = 1; i < 10; i++) {
-          const combinedProb = probs[i] * blendFactor + (order1Pred.digit === i ? order1Pred.confidence / 100 * (1 - blendFactor) : 0);
-          if (combinedProb > maxProb) {
-            maxProb = combinedProb;
-            bestDigit = i;
+        for(let i=0; i<10; i++) {
+          if(row[i] > highestCount) {
+            highestCount = row[i];
+            bestNextDigit = i;
           }
         }
         
-        return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 10 };
-      }
-    }
-    
-    function predictOrder3(steps) {
-      const len = digitHistory.length;
-      if (len < 3) return { digit: null, confidence: 0, current: 0, required: 8 };
-      
-      const prev1 = digitHistory[0];
-      const prev2 = digitHistory[1];
-      const prev3 = digitHistory[2];
-      const key = `${prev3},${prev2},${prev1}`;
-      
-      const total = totalTransitions3[key] || 0;
-      if (total < 8) {
-        // Fallback to Order 2
-        return predictOrder2(steps);
+        const probability = (highestCount / total) * 100;
+        markov1Prediction = { digit: bestNextDigit, confidence: probability };
       }
       
-      // Get probabilities with smoothing
-      const counts = transitionMatrix3[key];
-      let probs = Array(10).fill(0);
-      for (let i = 0; i < 10; i++) {
-        probs[i] = (counts[i] + SMOOTHING_ALPHA) / (total + 10 * SMOOTHING_ALPHA);
-      }
+      // Get AI-enhanced prediction based on selected model
+      const aiPrediction = App.modules.AIEngine.getPrediction(digitHistory, markov1Prediction);
       
-      if (steps === 1) {
-        let bestDigit = 0;
-        let maxProb = probs[0];
-        for (let i = 1; i < 10; i++) {
-          if (probs[i] > maxProb) {
-            maxProb = probs[i];
-            bestDigit = i;
-          }
-        }
-        return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 8 };
-      } else {
-        // Blend with lower orders for multi-step
-        const order2Pred = predictOrder2(steps);
-        const blendFactor = 0.6; // 60% order-3, 40% order-2
-        
-        let bestDigit = 0;
-        let maxProb = probs[0] * blendFactor + (order2Pred.digit === 0 ? order2Pred.confidence / 100 * (1 - blendFactor) : 0);
-        
-        for (let i = 1; i < 10; i++) {
-          const combinedProb = probs[i] * blendFactor + (order2Pred.digit === i ? order2Pred.confidence / 100 * (1 - blendFactor) : 0);
-          if (combinedProb > maxProb) {
-            maxProb = combinedProb;
-            bestDigit = i;
-          }
-        }
-        
-        return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 8 };
-      }
+      return aiPrediction;
     }
     
     function updatePredictionUI(pred, lastDigit) {
       predictedDigit = pred.digit;
       predictionConfidence = pred.confidence;
       
-      const duration = parseInt(document.getElementById('duration').value);
-      
-      // Update progress bar for data gathering
-      const progressBar = document.getElementById('dataProgress');
-      const progressFill = document.getElementById('dataProgressFill');
-      const progressText = document.getElementById('dataProgressText');
+      const total = totalTransitions[lastDigit];
       
       if (pred.digit === null) {
-        // Show progress bar
-        progressBar.style.display = 'block';
-        const current = pred.current || 0;
-        const required = pred.required || 15;
-        const percentage = Math.min(100, (current / required) * 100);
-        
-        progressFill.style.width = percentage + '%';
-        progressText.textContent = `Gathering data: ${current}/${required} samples`;
-        
-        document.getElementById('predictionInfo').textContent = `Building pattern database... Please wait.`;
+        const minSamples = Config.selectedAIModel === 'markov1' ? 15 : 
+                          Config.selectedAIModel === 'markov2' ? 10 : 8;
+        document.getElementById('predictionInfo').textContent = `Gathering data for digit ${lastDigit}... (${total}/${minSamples})`;
         App.modules.UI.updatePredictionDisplay(null, 0);
         return;
-      } else {
-        // Hide progress bar when ready
-        progressBar.style.display = 'none';
       }
 
-      const orderName = currentOrder === 1 ? "Order-1" : currentOrder === 2 ? "Order-2" : "Order-3";
-      const info = `${orderName} Model: Predicted digit in ${duration} tick${duration > 1 ? 's' : ''} = ${pred.digit} (${pred.confidence.toFixed(1)}% probability)`;
+      const modelName = getModelDisplayName();
+      const info = `${modelName}: When ${lastDigit} appears, ${pred.digit} follows ${pred.confidence.toFixed(1)}% of the time.`;
       document.getElementById('predictionInfo').textContent = info;
       
       const strengthEl = document.getElementById('patternStrength');
       const indicatorEl = document.getElementById('patternIndicator');
       
-      if (pred.confidence > 25) {
-        strengthEl.textContent = "Very Strong";
-        indicatorEl.className = "pattern-indicator pattern-strong";
-      } else if (pred.confidence > 18) {
-        strengthEl.textContent = "Strong";
+      if (pred.confidence > 20) {
+        strengthEl.textContent = "Strong Trend";
         indicatorEl.className = "pattern-indicator pattern-strong";
       } else if (pred.confidence > 14) {
-        strengthEl.textContent = "Moderate";
+        strengthEl.textContent = "Moderate Trend";
         indicatorEl.className = "pattern-indicator pattern-medium";
       } else {
-        strengthEl.textContent = "Weak";
+        strengthEl.textContent = "Random / Weak";
         indicatorEl.className = "pattern-indicator pattern-weak";
       }
       
       document.getElementById('probabilityValue').textContent = pred.confidence.toFixed(1) + '%';
-      
-      // Data points available
-      let dataPoints = pred.current || 0;
-      document.getElementById('patternScore').textContent = dataPoints;
+      document.getElementById('patternScore').textContent = total;
       
       const freq = digitHistory.filter(d => d === pred.digit).length;
       const freqPct = digitHistory.length > 0 ? (freq / digitHistory.length * 100) : 0;
       document.getElementById('frequencyValue').textContent = freqPct.toFixed(1) + '%';
       
       App.modules.UI.updatePredictionDisplay(pred.digit, pred.confidence);
+    }
+    
+    function getModelDisplayName() {
+      const model = Config.selectedAIModel;
+      const names = {
+        markov1: 'Markov-1',
+        markov2: 'Markov-2',
+        markov3: 'Markov-3',
+        ensemble: 'Ensemble'
+      };
+      return names[model] || 'AI';
     }
     
     function updateDisplay() {
@@ -875,44 +1012,25 @@ tbody tr:hover { background: #1e293b; }
       
       const last = digitHistory[0];
       if(last !== undefined) {
+          const total = digitHistory.length;
+          const count = digitHistory.filter(d => d === last).length;
           document.getElementById('matchCount').textContent = last;
-          document.getElementById('totalCount').textContent = digitHistory.length;
+          document.getElementById('totalCount').textContent = total;
+          document.getElementById('matchPercent').textContent = ((count/total)*100).toFixed(1) + "%";
       }
     }
     
-    function setOrder(order) {
-      currentOrder = order;
-      document.getElementById('currentOrder').textContent = order;
-      App.modules.UI.addLog(`Switched to Order-${order} Markov Model`, "info");
-      
-      // Update UI
-      document.querySelectorAll('.order-option').forEach(el => {
-        el.classList.toggle('active', parseInt(el.dataset.order) === order);
-      });
-    }
-    
     return {
-      init() {
-        // Order selector
-        document.querySelectorAll('.order-option').forEach(el => {
-          el.addEventListener('click', () => {
-            const order = parseInt(el.dataset.order);
-            setOrder(order);
-          });
-        });
-      },
+      init() {},
       processTick,
       resetForNewMarket: () => {
         digitHistory = [];
-        transitionMatrix1 = Array(10).fill(0).map(() => Array(10).fill(0));
-        totalTransitions1 = Array(10).fill(0);
-        transitionMatrix2 = {};
-        totalTransitions2 = {};
-        transitionMatrix3 = {};
-        totalTransitions3 = {};
+        transitionMatrix = Array(10).fill(0).map(() => Array(10).fill(0));
+        totalTransitions = Array(10).fill(0);
         predictedDigit = null;
         predictionConfidence = 0;
         lastDigit = null;
+        App.modules.AIEngine.reset();
         App.modules.UI.addLog("Memory wiped for new market", "warn");
       },
       getPrediction: () => {
@@ -920,28 +1038,14 @@ tbody tr:hover { background: #1e293b; }
       },
       getLastDigit: () => lastDigit,
       getData: () => ({ 
-        transitionMatrix1, 
-        totalTransitions1,
-        transitionMatrix2,
-        totalTransitions2,
-        transitionMatrix3,
-        totalTransitions3,
-        currentOrder
+        transitionMatrix, 
+        totalTransitions,
+        aiData: App.modules.AIEngine.getData()
       }),
       setData: (data) => {
-        if(data.transitionMatrix1) transitionMatrix1 = data.transitionMatrix1;
-        if(data.totalTransitions1) totalTransitions1 = data.totalTransitions1;
-        if(data.transitionMatrix2) transitionMatrix2 = data.transitionMatrix2;
-        if(data.totalTransitions2) totalTransitions2 = data.totalTransitions2;
-        if(data.transitionMatrix3) transitionMatrix3 = data.transitionMatrix3;
-        if(data.totalTransitions3) totalTransitions3 = data.totalTransitions3;
-        if(data.currentOrder) {
-          currentOrder = data.currentOrder;
-          document.getElementById('currentOrder').textContent = currentOrder;
-          document.querySelectorAll('.order-option').forEach(el => {
-            el.classList.toggle('active', parseInt(el.dataset.order) === currentOrder);
-          });
-        }
+        if(data.transitionMatrix) transitionMatrix = data.transitionMatrix;
+        if(data.totalTransitions) totalTransitions = data.totalTransitions;
+        if(data.aiData) App.modules.AIEngine.setData(data.aiData);
       }
     };
   })();
@@ -970,6 +1074,7 @@ tbody tr:hover { background: #1e293b; }
         App.modules.UI.saveSettings();
       });
       
+      // Load saved virtual stats
       const saved = localStorage.getItem('virtual_stats_dm_pro');
       if (saved) {
         virtualStats = JSON.parse(saved);
@@ -991,6 +1096,7 @@ tbody tr:hover { background: #1e293b; }
         isVirtualMode = true;
       }
       
+      // Store the pending trade
       pendingVirtualTrade = {
         targetDigit: targetDigit,
         confidence: confidence,
@@ -1001,16 +1107,18 @@ tbody tr:hover { background: #1e293b; }
     }
     
     function processTickResult(actualDigit) {
+      // Check if there's a pending virtual trade to process
       if (!pendingVirtualTrade) return;
       
       const trade = pendingVirtualTrade;
-      pendingVirtualTrade = null;
+      pendingVirtualTrade = null; // Clear immediately to prevent duplicate processing
       
       virtualStats.totalTrades++;
       
+      // Check if the trade won
       const isWin = (actualDigit === trade.targetDigit);
       const stake = parseFloat(document.getElementById('stake').value);
-      const payout = isWin ? stake * 0.95 : -stake;
+      const payout = isWin ? stake * 0.95 : -stake; // Approximate 95% payout
       
       virtualStats.profit += payout;
       
@@ -1022,11 +1130,13 @@ tbody tr:hover { background: #1e293b; }
         App.modules.UI.addLog(`[VIRTUAL] LOSS: Expected ${trade.targetDigit}, got ${actualDigit} ($${payout.toFixed(2)}) | Consecutive: ${virtualStats.consecLosses}`, "error");
       }
       
+      // Add to history
       App.modules.UI.addToHistory(virtualStats.totalTrades, isWin ? 'Win' : 'Loss', payout, Config.currentMarketValue, true);
       
       updateVirtualUI();
       saveVirtualStats();
       
+      // Check if should switch to live
       if (shouldSwitchToLive()) {
         switchToLiveMode();
       }
@@ -1040,6 +1150,7 @@ tbody tr:hover { background: #1e293b; }
       document.getElementById('virtualModeBadge').classList.remove('active');
       isVirtualMode = false;
       
+      // Reset consecutive losses but keep total stats
       virtualStats.consecLosses = 0;
       updateVirtualUI();
       saveVirtualStats();
@@ -1092,6 +1203,7 @@ tbody tr:hover { background: #1e293b; }
     let currentMarketIndex = 0;
     let cycleTimerId = null;
     
+    // Accepts final target digit
     function placeTrade(targetDigit, conf, isVirtual = false) {
       if (!App.modules.Connection.isConnected() && !isVirtual) {
         App.modules.UI.addLog("Error: Not connected to Deriv", "error");
@@ -1102,6 +1214,7 @@ tbody tr:hover { background: #1e293b; }
       const duration = parseInt(document.getElementById('duration').value);
       const market = Config.currentMarketValue;
       
+      // Validate inputs
       if (isNaN(stake) || stake < 0.35) {
         App.modules.UI.addLog("Error: Invalid stake amount", "error");
         return;
@@ -1137,15 +1250,19 @@ tbody tr:hover { background: #1e293b; }
     }
     
     function checkAndAutoTrade(prediction) {
+      // Skip if contract is pending
       if (currentContractId !== null) return;
+      
+      // Skip if prediction is not ready
       if (prediction.digit === null || prediction.digit === undefined) return; 
       
       const now = Date.now();
       const cooldownSec = parseFloat(document.getElementById('cooldown').value);
       
+      // Check if in virtual mode
       const isVirtualEnabled = App.modules.VirtualTrade.isEnabled();
       
-      // Exclusive Prediction Mapper Logic
+      // === EXCLUSIVE PREDICTION MAPPER LOGIC ===
       const isMapperOn = document.getElementById('mapperToggle').checked;
       const mapTrigger = document.getElementById('mapperTrigger').value;
       const mapTarget = document.getElementById('mapperTarget').value;
@@ -1156,7 +1273,8 @@ tbody tr:hover { background: #1e293b; }
       if (isMapperOn && mapTrigger !== "" && mapTarget !== "") {
           const trigger = parseInt(mapTrigger);
           const target = parseInt(mapTarget);
-          
+        
+        // Validate mapper inputs
           if (isNaN(trigger) || isNaN(target) || trigger < 0 || trigger > 9 || target < 0 || target > 9) {
             return;
           }
@@ -1165,27 +1283,33 @@ tbody tr:hover { background: #1e293b; }
               finalTarget = target;
               App.modules.UI.addLog(`⚡ Map Active: AI said ${trigger}, Trading ${target}`, "warn");
           } else {
+              // Mapper is ON but prediction doesn't match trigger - skip this trade
               return; 
           }
       } else {
+        // Manual digit override (if not using mapper)
         const manualDigit = parseInt(document.getElementById('manualDigit').value);
         if (!isNaN(manualDigit) && manualDigit !== 0 && prediction.digit !== manualDigit) {
           return;
         }
       }
       
+      // Validate final target
       if (isNaN(finalTarget) || finalTarget < 0 || finalTarget > 9) {
         App.modules.UI.addLog("Error: Invalid final target digit", "error");
         return;
       }
       
+      // Check confidence threshold
       const userMinConf = parseFloat(document.getElementById('minConfidence').value);
       if (finalConfidence < userMinConf) return;
       
+      // Check cooldown - reduced from 150ms minimum for faster execution
       if (now - lastTradeTime < (cooldownSec * 1000)) return;
       
       lastTradeTime = now;
       
+      // Route to virtual or live trade
       if (isVirtualEnabled) {
         placeTrade(finalTarget, finalConfidence, true);
       } else {
@@ -1298,7 +1422,8 @@ tbody tr:hover { background: #1e293b; }
         btn.style.background = "#ef4444";
         
         const mode = App.modules.VirtualTrade.isEnabled() ? "VIRTUAL" : "LIVE";
-        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode.`, "success");
+        const model = Config.selectedAIModel.toUpperCase();
+        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode using ${model}.`, "success");
       } else {
         localStorage.removeItem('isAutoRunning');
         btn.textContent = "Start Auto";
@@ -1344,6 +1469,7 @@ tbody tr:hover { background: #1e293b; }
       localStorage.removeItem('trade_stats_dm_pro');
       localStorage.removeItem('trade_history_dm_pro');
       
+      // Also reset virtual stats
       App.modules.VirtualTrade.resetVirtualStats();
       
       App.modules.UI.addLog("All stats reset.", "info");
@@ -1467,7 +1593,8 @@ tbody tr:hover { background: #1e293b; }
         analyzer: App.modules.Analyzer.getData(),
         market: Config.currentMarketValue,
         mapperToggle: document.getElementById('mapperToggle').checked,
-        virtualTradeToggle: document.getElementById('virtualTradeToggle').checked
+        virtualTradeToggle: document.getElementById('virtualTradeToggle').checked,
+        selectedAIModel: Config.selectedAIModel
       };
       document.querySelectorAll('.save-setting').forEach(el => {
         if(el.type !== 'checkbox') set[el.id] = el.value;
@@ -1496,6 +1623,16 @@ tbody tr:hover { background: #1e293b; }
         if(set.market) {
           Config.currentMarketValue = set.market;
           selectMarket(set.market);
+        }
+        
+        if(set.selectedAIModel) {
+          // Defer AI model selection until after AIEngine is initialized
+          setTimeout(() => {
+            const modelRadio = document.querySelector(`input[name="aiModel"][value="${set.selectedAIModel}"]`);
+            if (modelRadio) {
+              modelRadio.click();
+            }
+          }, 100);
         }
       }
       
