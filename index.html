@@ -3,16 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Deriv Digit Over 5 Pro - Advanced ML Edition v3 (PSF + LSTM Optimized)</title>
+<title>Deriv Digit Match Pro - Advanced ML</title>
 <style>
-/* --- STYLES PRESERVED --- */
+/* --- CORE STYLES --- */
 body { background: #020617; color: #e5e7eb; font-family: system-ui, -apple-system, sans-serif; margin: 0; padding: 0; }
 .app { max-width: 420px; margin: auto; padding: 15px; }
 .card { background: #0f172a; padding: 12px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #1e293b; }
 h2, h3 { text-align: center; margin-bottom: 8px; margin-top: 8px; }
 h2 { color: #22c55e; }
 label { font-size: 13px; opacity: 0.8; display: block; margin-top: 8px; }
-input, select, button { width: 100%; padding: 10px; margin: 5px 0 10px; border-radius: 8px; border: none; box-sizing: border-box; }
+input[type="number"], input[type="password"], select, button { width: 100%; padding: 10px; margin: 5px 0 10px; border-radius: 8px; border: none; box-sizing: border-box; }
 input, select { background: #1e293b; color: #e5e7eb; border: 1px solid #334155; }
 input:focus, select:focus { outline: none; border-color: #22c55e; }
 button { background: #22c55e; color: #020617; font-weight: 700; cursor: pointer; transition: all 0.2s; }
@@ -43,13 +43,12 @@ tbody tr:hover { background: #1e293b; }
 .balance-display span { opacity: 0.7; font-size: 14px; }
 .balance-display b { color: #22c55e; font-size: 18px; margin: 0 5px; }
 .session-timer { margin-top: 8px; font-size: 12px; color: #f59e0b; font-weight: 600; }
-.shutdown-timer { font-size: 12px; color: #ef4444; font-weight: 700; margin-top: 4px; display: none; }
 .reset-button-permanent { background: #f59e0b !important; width: 100%; margin-bottom: 12px; font-size: 15px; display: block; }
 .reset-button-permanent:hover { background: #d97706 !important; }
 .analyzer-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px; margin: 10px 0; }
 .digit-box { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: 700; font-size: 14px; border: 2px solid transparent; }
-.digit-over { background: #22c55e; color: #020617; }
-.digit-under { background: #ef4444; color: white; }
+.digit-match { background: #8b5cf6; color: white; border-color: #22c55e; }
+.digit-other { background: #1e293b; color: #94a3b8; }
 .analyzer-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; text-align: center; margin-top: 10px; }
 .analyzer-stats > div { background: #1e293b; padding: 8px; border-radius: 6px; }
 .analyzer-stats span { font-size: 11px; opacity: 0.7; display: block; }
@@ -65,25 +64,7 @@ tbody tr:hover { background: #1e293b; }
 .btn-cycle.active { background: #8b5cf6; border: 2px solid #fff; }
 .btn-cooldown { background: #475569; color: white; margin-bottom: 5px; font-size: 14px; }
 .btn-cooldown.active { background: #f59e0b; color: #020617; border: 2px solid #020617; }
-.btn-reverse { background: #334155; color: white; margin-bottom: 12px; font-size: 14px; }
-.btn-reverse.active { background: #f43f5e; }
 .cycle-timer-display { color: #f59e0b; font-size: 13px; font-weight: bold; text-align: center; margin-bottom: 10px; display: none; padding: 8px; border: 2px dashed #f59e0b; border-radius: 8px; background: rgba(245, 158, 11, 0.1); }
-.specific-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-bottom: 10px; }
-.specific-grid input { text-align: center; padding: 8px 0; margin: 0; }
-.window-timer { margin-top: 10px; font-size: 12px; text-align: center; font-weight: 800; padding: 8px; border-radius: 6px; background: #020617; border: 2px solid #334155; transition: all 0.3s; }
-
-/* Sequence UI Styles */
-.sequence-slot { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 10px; margin-bottom: 10px; }
-.sequence-slot-title { font-size: 11px; font-weight: 700; color: #3b82f6; margin-bottom: 5px; text-transform: uppercase; }
-.seq-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; }
-.seq-grid input { font-size: 11px; padding: 5px; margin: 0; }
-
-/* ML Enhancement Styles */
-.ml-indicator { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 5px; }
-.ml-learning { background: #8b5cf6; color: white; }
-.ml-active { background: #22c55e; color: #020617; }
-.advanced-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 8px; font-size: 10px; }
-.advanced-stats > div { background: #020617; padding: 5px; border-radius: 4px; text-align: center; }
 
 /* Radio Button Styles */
 .radio-group { margin: 10px 0; }
@@ -93,63 +74,68 @@ tbody tr:hover { background: #1e293b; }
 .radio-option.selected { border-color: #22c55e; background: #1e3a2b; }
 .radio-option label { cursor: pointer; margin: 0; opacity: 1; font-size: 13px; font-weight: 600; width: 100%; }
 
-/* Pattern Mode UI */
-.pattern-target-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 10px; }
-.pattern-target-grid input { text-align: center; padding: 8px; margin: 0; background: #0f172a; border: 2px solid #8b5cf6; }
-.pattern-mode-active { background: #8b5cf6; padding: 8px; border-radius: 6px; text-align: center; margin: 10px 0; font-weight: 700; color: white; }
-.ensemble-filter-box { background: #0f172a; border: 2px solid #f59e0b; border-radius: 6px; padding: 10px; margin-top: 10px; }
-.ensemble-filter-box label { color: #f59e0b; font-weight: 700; font-size: 12px; }
-.ensemble-status { text-align: center; font-size: 11px; margin-top: 5px; padding: 5px; border-radius: 4px; background: #1e293b; }
-.ensemble-filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-.filter-warning { background: #ef4444; color: white; padding: 6px; border-radius: 4px; text-align: center; font-size: 10px; font-weight: 700; margin-top: 5px; display: none; }
+/* Prediction & Metrics */
+.prediction-box { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 2px solid #8b5cf6; border-radius: 8px; padding: 15px; margin: 10px 0; text-align: center; }
+.prediction-status { font-size: 14px; font-weight: 700; color: #94a3b8; margin-bottom: 10px; }
+.prediction-digit { font-size: 48px; font-weight: 900; margin: 15px 0; }
+.prediction-waiting { color: #f59e0b; }
+.prediction-ready { color: #22c55e; animation: pulse 1.5s infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+.prediction-info { font-size: 11px; opacity: 0.7; margin-top: 10px; line-height: 1.5; }
 
-/* Toggle Switch Styles */
-.toggle-container { display: flex; align-items: center; justify-content: space-between; padding: 10px; background: #1e293b; border-radius: 6px; margin: 10px 0; border: 2px solid #334155; }
-.toggle-label { font-size: 13px; font-weight: 700; color: #e5e7eb; }
-.toggle-switch { position: relative; width: 50px; height: 26px; }
-.toggle-switch input { opacity: 0; width: 0; height: 0; }
-.toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; border-radius: 34px; transition: .4s; }
-.toggle-slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: .4s; }
-.toggle-switch input:checked + .toggle-slider { background-color: #22c55e; }
-.toggle-switch input:checked + .toggle-slider:before { transform: translateX(24px); }
+.accuracy-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 12px; }
+.accuracy-card { background: #020617; padding: 10px; border-radius: 6px; border: 1px solid #334155; text-align: center; }
+.accuracy-card .label { font-size: 10px; color: #94a3b8; margin-bottom: 5px; }
+.accuracy-card .value { font-size: 18px; font-weight: 700; color: #8b5cf6; }
+.confidence-bar { width: 100%; height: 8px; background: #1e293b; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+.confidence-fill { height: 100%; background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e); transition: width 0.3s; }
+.pattern-indicator { margin-top: 10px; padding: 8px; background: #1e293b; border-radius: 6px; font-size: 11px; }
+.pattern-strong { border-left: 4px solid #22c55e; }
+.pattern-medium { border-left: 4px solid #f59e0b; }
+.pattern-weak { border-left: 4px solid #ef4444; }
 
-/* Specific Ensemble Percentages */
-.specific-ensemble-section { background: #0f172a; border: 2px solid #8b5cf6; border-radius: 6px; padding: 10px; margin-top: 10px; display: none; }
-.specific-ensemble-section.active { display: block; }
-.specific-ensemble-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 8px; }
-.specific-ensemble-grid input { text-align: center; padding: 8px; margin: 0; background: #1e293b; border: 2px solid #8b5cf6; }
+/* Model Order Selector */
+.model-order-selector { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin: 10px 0; }
+.order-option { padding: 8px; border-radius: 6px; border: 2px solid #334155; background: #1e293b; cursor: pointer; text-align: center; transition: all 0.2s; }
+.order-option:hover { border-color: #8b5cf6; }
+.order-option.active { border-color: #22c55e; background: #1e3a2b; }
+.order-option .order-label { font-size: 10px; color: #94a3b8; }
+.order-option .order-name { font-size: 13px; font-weight: 700; color: #e5e7eb; margin-top: 3px; }
 
-/* Model Performance Indicators */
-.model-performance { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 5px; margin-top: 8px; font-size: 10px; }
-.model-performance > div { background: #1e293b; padding: 5px; border-radius: 4px; text-align: center; border: 1px solid #334155; }
-.model-perf-high { border-color: #22c55e; }
-.model-perf-low { border-color: #ef4444; }
+/* Progress Bar for Data Gathering */
+.data-progress { margin-top: 10px; }
+.data-progress-bar { width: 100%; height: 6px; background: #1e293b; border-radius: 3px; overflow: hidden; }
+.data-progress-fill { height: 100%; background: linear-gradient(90deg, #ef4444, #f59e0b, #22c55e); transition: width 0.3s; }
+.data-progress-text { font-size: 11px; color: #94a3b8; margin-top: 5px; text-align: center; }
+
+/* Toggle Switch Style */
+.switch-container { display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 10px; border-radius: 8px; border: 1px solid #ef4444; margin-bottom: 10px; }
+.switch-label { color: #ef4444; font-weight: bold; font-size: 14px; }
+.toggle-checkbox { width: 20px !important; height: 20px !important; margin: 0 !important; cursor: pointer; }
 
 /* Virtual Trade Styles */
-.virtual-trade-container { background: #1e293b; border: 2px solid #8b5cf6; border-radius: 8px; padding: 10px; margin-bottom: 12px; }
-.virtual-trade-header { font-size: 13px; font-weight: 700; color: #8b5cf6; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-.virtual-trade-status { background: #8b5cf6; color: white; padding: 6px 10px; border-radius: 6px; text-align: center; font-size: 11px; font-weight: 700; margin-top: 8px; display: none; }
-.virtual-trade-status.active { display: block; }
-.virtual-trade-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-.virtual-trade-stats > div { background: #0f172a; padding: 6px; border-radius: 4px; text-align: center; }
-.virtual-trade-stats span { font-size: 10px; opacity: 0.7; display: block; }
-.virtual-trade-stats b { font-size: 14px; display: block; margin-top: 2px; color: #8b5cf6; }
-.switch-notice { background: #22c55e; color: #020617; padding: 6px; border-radius: 4px; text-align: center; font-size: 11px; font-weight: 700; margin-top: 8px; display: none; }
-.switch-notice.active { display: block; }
-
-/* LSTM Training Status */
-.lstm-status { background: #0f172a; border: 2px solid #8b5cf6; border-radius: 6px; padding: 8px; margin-top: 10px; }
-.lstm-status-header { font-size: 11px; font-weight: 700; color: #8b5cf6; margin-bottom: 5px; }
-.lstm-progress { background: #1e293b; border-radius: 4px; height: 20px; overflow: hidden; margin-top: 5px; }
-.lstm-progress-bar { background: linear-gradient(90deg, #8b5cf6, #22c55e); height: 100%; transition: width 0.3s; }
-.lstm-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 8px; font-size: 10px; }
-.lstm-stats-grid > div { background: #1e293b; padding: 5px; border-radius: 4px; text-align: center; }
+.virtual-trade-container { background: #1e293b; padding: 10px; border-radius: 8px; border: 2px solid #8b5cf6; margin-bottom: 10px; }
+.virtual-trade-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.virtual-trade-label { color: #8b5cf6; font-weight: bold; font-size: 14px; }
+.virtual-mode-badge { background: #8b5cf6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; display: none; }
+.virtual-mode-badge.active { display: inline-block; animation: blink 1.5s infinite; }
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.virtual-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+.virtual-stat-box { background: #0f172a; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #334155; }
+.virtual-stat-box span { font-size: 10px; color: #94a3b8; display: block; }
+.virtual-stat-box b { font-size: 16px; color: #8b5cf6; display: block; margin-top: 3px; }
 </style>
 </head>
 <body>
 <div class="app">
 
-<h2>Deriv Digit Over 5 Pro <span class="ml-indicator ml-active">ML Enhanced v3 (PSF+LSTM Optimized)</span></h2>
+<h2>Deriv Digit Match Pro - ML</h2>
 
 <div class="status-container">
     <div id="status" class="status disconnected">Disconnected</div>
@@ -161,128 +147,134 @@ tbody tr:hover { background: #1e293b; }
   <b id="balance">0.00</b>
   <span id="balanceCurrency">USD</span>
   <div id="sessionTimer" class="session-timer">Session: 00:00:00</div>
-  <div id="shutdownDisplay" class="shutdown-timer">Shutdown in: --:--:--</div>
 </div>
 
 <div class="card">
   <input id="token" type="password" placeholder="Deriv API Token" required>
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-    <button onclick="connect()">Login</button>
+    <button id="loginBtn">Login</button>
     <button id="logoutBtn" style="background: #ef4444;">Logout</button>
   </div>
 </div>
 
-<!-- Virtual Trade Feature -->
-<div class="virtual-trade-container">
-  <div class="virtual-trade-header">
-    🎮 Virtual Trade Mode
-  </div>
-  
-  <div class="toggle-container" style="margin: 0;">
-    <span class="toggle-label">Enable Virtual Trade First</span>
-    <label class="toggle-switch">
-      <input type="checkbox" id="virtualTradeToggle" onchange="toggleVirtualTrade()">
-      <span class="toggle-slider"></span>
-    </label>
-  </div>
-  
-  <div id="virtualTradeSettings" style="display: none; margin-top: 10px;">
-    <label>Consecutive Losses to Switch to Live</label>
-    <input id="virtualLossThreshold" class="save-setting" type="number" value="3" min="1" max="20">
-    
-    <div class="virtual-trade-stats">
-      <div>
-        <span>Virtual Losses</span>
-        <b id="virtualLossCount">0</b>
-      </div>
-      <div>
-        <span>Threshold</span>
-        <b id="virtualThresholdDisplay">3</b>
-      </div>
-    </div>
-    
-    <div class="virtual-trade-status" id="virtualTradeStatus">
-      🎮 Trading on VIRTUAL account
-    </div>
-    
-    <div class="switch-notice" id="switchNotice">
-      ⚠️ Switched to LIVE account after hitting loss threshold!
-    </div>
-  </div>
-</div>
-
 <div class="card">
-  <h3>📊 Advanced ML Analyzer v3 (PSF + LSTM Optimized)</h3>
+  <h3>🧠 Advanced ML Digit Analyzer</h3>
+  
+  <div style="margin-bottom: 10px;">
+    <label style="margin-bottom: 5px;">Markov Chain Order (Pattern Depth)</label>
+    <div class="model-order-selector">
+      <div class="order-option active" data-order="1">
+        <div class="order-label">Fast</div>
+        <div class="order-name">Order 1</div>
+      </div>
+      <div class="order-option" data-order="2">
+        <div class="order-label">Balanced</div>
+        <div class="order-name">Order 2</div>
+      </div>
+      <div class="order-option" data-order="3">
+        <div class="order-label">Deep</div>
+        <div class="order-name">Order 3</div>
+      </div>
+    </div>
+    <div style="font-size: 10px; opacity: 0.7; text-align: center; margin-top: 5px;">
+      Higher orders = better pattern detection, requires more data
+    </div>
+  </div>
+  
   <div class="analyzer-grid" id="digitDisplay"></div>
   <div class="analyzer-stats">
-    <div><span>Over 5</span><b id="overCount" style="color: #22c55e;">0</b></div>
+    <div><span>Last Digit</span><b id="matchCount" style="color: #8b5cf6;">-</b></div>
     <div><span>Total Ticks</span><b id="totalCount" style="color: #e5e7eb;">0</b></div>
-    <div><span>Over %</span><b id="overPercent" style="color: #22c55e;">0%</b></div>
+    <div><span>Model Order</span><b id="currentOrder" style="color: #22c55e;">1</b></div>
   </div>
   
-  <!-- LSTM Training Status -->
-  <div class="lstm-status">
-    <div class="lstm-status-header">🧠 LSTM Neural Network Status (Stable Build)</div>
-    <div style="font-size: 10px; opacity: 0.7;" id="lstmStatusText">Not Initialized</div>
-    <div class="lstm-progress">
-      <div class="lstm-progress-bar" id="lstmProgressBar" style="width: 0%;"></div>
+  <div class="prediction-box">
+    <div class="prediction-status">🎯 Multi-Order Markov Prediction</div>
+    <div class="prediction-digit" id="predictionDisplay">
+      <span class="prediction-waiting">WAITING...</span>
     </div>
-    <div class="lstm-stats-grid">
-      <div><span style="opacity:0.6">Training Loss</span><b id="lstmLoss" style="color:#8b5cf6">--</b></div>
-      <div><span style="opacity:0.6">LSTM Accuracy</span><b id="lstmAccuracy" style="color:#22c55e">--%</b></div>
-      <div><span style="opacity:0.6">Samples Trained</span><b id="lstmSamples" style="color:#3b82f6">0</b></div>
-      <div><span style="opacity:0.6">Last Retrain</span><b id="lstmLastRetrain" style="color:#f59e0b">Never</b></div>
+    <div class="confidence-bar">
+      <div class="confidence-fill" id="confidenceBar" style="width: 0%"></div>
     </div>
-  </div>
-  
-  <div style="margin-top: 10px; padding: 12px; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 8px; border: 2px solid #22c55e;">
-    <div style="font-size: 14px; font-weight: 700; margin-bottom: 10px; color: #22c55e;">🔮 ML Prediction Engine v3</div>
+    <div class="prediction-info" id="predictionInfo">Analyzing tick patterns...</div>
     
-    <div id="signalTimerDisplay" class="window-timer">SYNCING CLOCK...</div>
+    <!-- Data Gathering Progress Bar -->
+    <div class="data-progress" id="dataProgress" style="display: none;">
+      <div class="data-progress-bar">
+        <div class="data-progress-fill" id="dataProgressFill" style="width: 0%"></div>
+      </div>
+      <div class="data-progress-text" id="dataProgressText">Gathering data: 0/15 samples</div>
+    </div>
+    
+    <div class="accuracy-metrics">
+      <div class="accuracy-card">
+        <div class="label">Probability</div>
+        <div class="value" id="probabilityValue">0%</div>
+      </div>
+      <div class="accuracy-card">
+        <div class="label">Data Points</div>
+        <div class="value" id="patternScore">0</div>
+      </div>
+      <div class="accuracy-card">
+        <div class="label">Frequency</div>
+        <div class="value" id="frequencyValue">0%</div>
+      </div>
+    </div>
+    
+    <div id="patternIndicator" class="pattern-indicator pattern-weak">
+      <strong>Pattern Strength:</strong> <span id="patternStrength">Learning...</span>
+    </div>
+  </div>
 
-    <div style="background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 8px; margin-top: 8px;">
-      <div style="font-size: 11px; opacity: 0.7; margin-bottom: 5px;">Next Digit Prediction:</div>
-      <div style="font-size: 24px; font-weight: 700; text-align: center;" id="nextDigitPrediction">-</div>
-      <div style="font-size: 11px; text-align: center; margin-top: 5px;" id="predictionConfidence">-</div>
+  <div style="margin-top: 15px; border-top: 1px solid #334155; padding-top: 10px;">
+    <div style="font-size: 12px; font-weight: 600; color: #94a3b8; display: flex; justify-content: space-between;">
+      <span>SYSTEM & TRADE LOG</span>
+      <span id="clearLog" style="cursor:pointer; color:#3b82f6">Clear</span>
     </div>
-    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; font-size: 11px;">
-      <div style="background: #1e293b; padding: 6px; border-radius: 4px; text-align: center;"><div>Freq Bias</div><b id="freqScore" style="color: #22c55e;">0%</b></div>
-      <div style="background: #1e293b; padding: 6px; border-radius: 4px; text-align: center;"><div>Gap Count</div><b id="cycleScore" style="color: #3b82f6;">0</b></div>
-      <div style="background: #1e293b; padding: 6px; border-radius: 4px; text-align: center;"><div>Volatility</div><b id="volatilityScore" style="color: #f59e0b;">Low</b></div>
-    </div>
-    
-    <div class="advanced-stats">
-      <div><span style="opacity:0.6">Bayesian Prob</span><b id="bayesianProb" style="color:#8b5cf6">50%</b></div>
-      <div><span style="opacity:0.6">Markov Pred</span><b id="markovProb" style="color:#3b82f6">50%</b></div>
-      <div><span style="opacity:0.6">PSF Forecast</span><b id="psfScore" style="color:#f59e0b">50%</b></div>
-      <div><span style="opacity:0.6">LSTM Pred</span><b id="lstmPred" style="color:#8b5cf6">50%</b></div>
-      <div><span style="opacity:0.6">Ensemble</span><b id="ensembleScore" style="color:#22c55e">50%</b></div>
-      <div><span style="opacity:0.6">Confidence Adj</span><b id="confAdj" style="color:#f59e0b">0%</b></div>
-    </div>
-    
-    <div class="model-performance">
-      <div id="heuristicPerf"><span style="opacity:0.6">Heuristic</span><b style="color:#22c55e">--%</b></div>
-      <div id="bayesianPerf"><span style="opacity:0.6">Bayesian</span><b style="color:#8b5cf6">--%</b></div>
-      <div id="markovPerf"><span style="opacity:0.6">Markov</span><b style="color:#3b82f6">--%</b></div>
-      <div id="psfPerf"><span style="opacity:0.6">PSF</span><b style="color:#f59e0b">--%</b></div>
-    </div>
-    
-    <div style="margin-top: 8px; font-size: 11px; opacity: 0.7; text-align: center;" id="patternMatch">Analyzing patterns...</div>
-    
-    <div style="margin-top: 15px; border-top: 1px solid #334155; padding-top: 10px;">
-        <div style="font-size: 12px; font-weight: 600; color: #94a3b8; display: flex; justify-content: space-between;">
-            <span>SYSTEM & TRADE LOG</span>
-            <span style="cursor:pointer; color:#3b82f6" onclick="document.getElementById('logContainer').innerHTML=''">Clear</span>
-        </div>
-        <div class="log-container" id="logContainer">
-            <div class="log-entry"><span class="log-time">[System]</span> <span class="log-msg-success">ML Engine v3 Ready (PSF + LSTM Optimized).</span></div>
-        </div>
+    <div class="log-container" id="logContainer">
+      <div class="log-entry"><span class="log-time">[System]</span> <span class="log-msg-success">ML Engine Ready.</span></div>
     </div>
   </div>
 </div>
 
 <div class="card">
   <h3>Trade Settings</h3>
+  
+  <!-- Virtual Trade Section -->
+  <div class="virtual-trade-container">
+    <div class="virtual-trade-header">
+      <div style="display:flex; flex-direction:column;">
+        <span class="virtual-trade-label">🎮 Virtual Trade Mode</span>
+        <span style="font-size:9px; opacity:0.6;">Practice until consecutive losses hit, then go LIVE</span>
+      </div>
+      <div style="display:flex; align-items:center; gap: 8px;">
+        <span class="virtual-mode-badge" id="virtualModeBadge">VIRTUAL MODE</span>
+        <div style="display:flex; align-items:center;">
+          <span style="font-size:10px; margin-right:5px; opacity:0.7;">OFF/ON</span>
+          <input type="checkbox" id="virtualTradeToggle" class="toggle-checkbox save-setting">
+        </div>
+      </div>
+    </div>
+    
+    <label style="margin-top: 5px;">Consecutive Losses to Switch to Live</label>
+    <input id="virtualLossThreshold" class="save-setting" type="number" value="3" min="1" max="20" step="1">
+    
+    <div class="virtual-stats">
+      <div class="virtual-stat-box">
+        <span>Consecutive Losses</span>
+        <b id="virtualConsecLosses">0</b>
+      </div>
+      <div class="virtual-stat-box">
+        <span>Virtual Trades</span>
+        <b id="virtualTotalTrades">0</b>
+      </div>
+      <div class="virtual-stat-box">
+        <span>Virtual P/L</span>
+        <b id="virtualProfit">0.00</b>
+      </div>
+    </div>
+  </div>
+  
   <label>Stake ($)</label>
   <input id="stake" class="save-setting" type="number" value="1" min="0.35" step="0.01">
   <label>Duration (Ticks)</label>
@@ -290,175 +282,58 @@ tbody tr:hover { background: #1e293b; }
   <label>Cooldown (seconds)</label>
   <input id="cooldown" class="save-setting" type="number" value="2" min="1">
   
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-    <div>
-      <label>Window: Closing (Sec)</label>
-      <input id="closingSec" class="save-setting" type="number" value="10" min="1" max="59">
+  <label>Minimum Confidence Threshold (%)</label>
+  <input id="minConfidence" class="save-setting" type="number" value="15" min="0" max="100" step="5">
+
+  <label>Manual Digit Override (0 = Auto Mode)</label>
+  <input id="manualDigit" class="save-setting" type="number" value="0" min="0" max="9" step="1">
+
+  <div style="margin-top: 15px; border-top: 1px solid #334155; padding-top: 15px;">
+    <div class="switch-container">
+      <div style="display:flex; flex-direction:column;">
+        <span class="switch-label">⚡ Exclusive Prediction Mapper</span>
+        <span style="font-size:9px; opacity:0.6;">ONLY trades if Prediction matches Condition.</span>
+      </div>
+      <div style="display:flex; align-items:center;">
+        <span style="font-size:10px; margin-right:5px; opacity:0.7;">OFF/ON</span>
+        <input type="checkbox" id="mapperToggle" class="toggle-checkbox save-setting">
+      </div>
     </div>
-    <div>
-      <label>Window: Opening (Sec)</label>
-      <input id="openingSec" class="save-setting" type="number" value="10" min="1" max="59">
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <div>
+        <label style="font-size: 11px; color: #94a3b8; margin-top:0;">IF AI PREDICTS:</label>
+        <input id="mapperTrigger" class="save-setting" type="number" placeholder="Trigger" min="0" max="9" style="border: 1px solid #ef4444; text-align: center;">
+      </div>
+      <div>
+        <label style="font-size: 11px; color: #94a3b8; margin-top:0;">THEN TRADE:</label>
+        <input id="mapperTarget" class="save-setting" type="number" placeholder="Target" min="0" max="9" style="border: 1px solid #22c55e; text-align: center;">
+      </div>
+    </div>
+    <div style="font-size: 10px; opacity: 0.8; color: #fca5a5; margin-top: 5px; text-align: center;">
+       Logic: If ON, bot ignores ALL predictions except Trigger.
     </div>
   </div>
 
-  <label>Confidence Selection Mode</label>
-  <div class="radio-group" id="confidenceModeRadios">
-      <div class="radio-option" onclick="selectConfidenceMode('range')">
-          <input type="radio" name="confidenceMode" value="range" id="modeRange" checked>
-          <label for="modeRange">Mode 1: Range (Min-Max)</label>
-      </div>
-      <div class="radio-option" onclick="selectConfidenceMode('specific')">
-          <input type="radio" name="confidenceMode" value="specific" id="modeSpecific">
-          <label for="modeSpecific">Mode 2: Specific Numbers (Pick 5)</label>
-      </div>
-      <div class="radio-option" onclick="selectConfidenceMode('sequence')">
-          <input type="radio" name="confidenceMode" value="sequence" id="modeSequence">
-          <label for="modeSequence">Mode 3: Sequence Pattern (3 Slots)</label>
-      </div>
-      <div class="radio-option" onclick="selectConfidenceMode('pattern')">
-          <input type="radio" name="confidenceMode" value="pattern" id="modePattern">
-          <label for="modePattern">Mode 4: Pattern Detection (Next Likely Digit)</label>
-      </div>
-  </div>
-
-  <div id="rangeUI">
-      <label>Confidence Range (Min - Max %)</label>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <input id="minConfidence" class="save-setting" type="number" value="55" min="0" max="100" placeholder="Min">
-        <input id="maxConfidence" class="save-setting" type="number" value="70" min="0" max="100" placeholder="Max">
-      </div>
-  </div>
-
-  <div id="specificUI" style="display:none;">
-      <label>Specific Target Numbers</label>
-      <div class="specific-grid">
-          <input id="spec1" class="save-setting" type="number" value="10" min="0" max="100">
-          <input id="spec2" class="save-setting" type="number" value="25" min="0" max="100">
-          <input id="spec3" class="save-setting" type="number" value="49" min="0" max="100">
-          <input id="spec4" class="save-setting" type="number" value="50" min="0" max="100">
-          <input id="spec5" class="save-setting" type="number" value="65" min="0" max="100">
-      </div>
-  </div>
-
-  <div id="sequenceUI" style="display:none;">
-      <label>Sequence Slots Logic</label>
-      
-      <div class="sequence-slot">
-          <div class="sequence-slot-title">Slot 1</div>
-          <div class="seq-grid">
-              <div><span style="font-size:9px">1st Pred >=</span><input id="s1_p1_min" class="save-setting" type="number" value="40"></div>
-              <div><span style="font-size:9px">2nd Pred >=</span><input id="s1_p2_min" class="save-setting" type="number" value="50"></div>
-              <div><span style="font-size:9px">2nd Pred <=</span><input id="s1_p2_max" class="save-setting" type="number" value="98"></div>
-          </div>
-      </div>
-
-      <div class="sequence-slot">
-          <div class="sequence-slot-title">Slot 2</div>
-          <div class="seq-grid">
-              <div><span style="font-size:9px">1st Pred >=</span><input id="s2_p1_min" class="save-setting" type="number" value="15"></div>
-              <div><span style="font-size:9px">2nd Pred >=</span><input id="s2_p2_min" class="save-setting" type="number" value="60"></div>
-              <div><span style="font-size:9px">2nd Pred <=</span><input id="s2_p2_max" class="save-setting" type="number" value="98"></div>
-          </div>
-      </div>
-
-      <div class="sequence-slot">
-          <div class="sequence-slot-title">Slot 3</div>
-          <div class="seq-grid">
-              <div><span style="font-size:9px">1st Pred >=</span><input id="s3_p1_min" class="save-setting" type="number" value="50"></div>
-              <div><span style="font-size:9px">2nd Pred >=</span><input id="s3_p2_min" class="save-setting" type="number" value="50"></div>
-              <div><span style="font-size:9px">2nd Pred <=</span><input id="s3_p2_max" class="save-setting" type="number" value="98"></div>
-          </div>
-      </div>
-  </div>
-
-  <div id="patternUI" style="display:none;">
-      <div class="pattern-mode-active">🎯 Pattern Detection Mode Active</div>
-      <label>Target Digits for Pattern Match (0-9)</label>
-      <div class="pattern-target-grid">
-          <input id="pattern1" class="save-setting" type="number" value="0" min="0" max="9" placeholder="Digit 1">
-          <input id="pattern2" class="save-setting" type="number" value="1" min="0" max="9" placeholder="Digit 2">
-          <input id="pattern3" class="save-setting" type="number" value="6" min="0" max="9" placeholder="Digit 3">
-          <input id="pattern4" class="save-setting" type="number" value="7" min="0" max="9" placeholder="Digit 4">
-          <input id="pattern5" class="save-setting" type="number" value="8" min="0" max="9" placeholder="Digit 5">
-      </div>
-      <div style="font-size: 11px; opacity: 0.7; margin-top: 8px; text-align: center;">
-          Bot will trade when pattern's "Next Likely" digit matches any of the above targets
-      </div>
-      
-      <div class="ensemble-filter-box">
-          <label>⚡ Next Likely % Filter (Use ONE at a time)</label>
-          <div class="ensemble-filter-grid">
-              <div>
-                  <span style="font-size: 10px; opacity: 0.7; display: block; margin-bottom: 3px;">Trade if ≤ (Less/Equal)</span>
-                  <input id="patternEnsembleMax" class="save-setting ensemble-filter-input" type="number" value="0" min="0" max="100" placeholder="0 = OFF">
-              </div>
-              <div>
-                  <span style="font-size: 10px; opacity: 0.7; display: block; margin-bottom: 3px;">Trade if ≥ (Greater/Equal)</span>
-                  <input id="patternEnsembleMin" class="save-setting ensemble-filter-input" type="number" value="0" min="0" max="100" placeholder="0 = OFF">
-              </div>
-          </div>
-          <div class="filter-warning" id="filterWarning">
-              ⚠️ Cannot use multiple filters! Only ONE can be active
-          </div>
-          <div class="ensemble-status" id="ensembleFilterStatus">
-              All filters disabled - Trading on pattern match only
-          </div>
-          <div style="font-size: 10px; opacity: 0.6; margin-top: 8px; line-height: 1.4;">
-              📌 <strong>Quick Guide:</strong><br>
-              <strong>≤ (Max):</strong> Trade when Next Likely % is LOW (0 = OFF)<br>
-              <strong>≥ (Min):</strong> Trade when Next Likely % is HIGH (0 = OFF)<br>
-              <strong>⚠️ Only ONE filter active at a time</strong>
-          </div>
-      </div>
-      
-      <!-- Specific Ensemble Percentages Toggle -->
-      <div class="toggle-container">
-          <span class="toggle-label">📊 Specific Next Likely % Filter</span>
-          <label class="toggle-switch">
-              <input type="checkbox" id="specificEnsembleToggle" onchange="toggleSpecificEnsemble()">
-              <span class="toggle-slider"></span>
-          </label>
-      </div>
-      
-      <div class="specific-ensemble-section" id="specificEnsembleSection">
-          <label style="color: #8b5cf6; font-weight: 700; font-size: 12px; margin-bottom: 8px; display: block;">
-              🎯 Specific Next Likely Percentages (Pick up to 5)
-          </label>
-          <div class="specific-ensemble-grid">
-              <input id="specEns1" class="save-setting" type="number" value="25" min="0" max="100" placeholder="%1">
-              <input id="specEns2" class="save-setting" type="number" value="50" min="0" max="100" placeholder="%2">
-              <input id="specEns3" class="save-setting" type="number" value="65" min="0" max="100" placeholder="%3">
-              <input id="specEns4" class="save-setting" type="number" value="75" min="0" max="100" placeholder="%4">
-              <input id="specEns5" class="save-setting" type="number" value="85" min="0" max="100" placeholder="%5">
-          </div>
-          <div style="text-align: center; font-size: 11px; margin-top: 8px; padding: 6px; background: #1e293b; border-radius: 4px;" id="specificEnsembleStatus">
-              Trade only when Next Likely % matches these specific values
-          </div>
-          <div style="font-size: 10px; opacity: 0.6; margin-top: 8px; line-height: 1.4;">
-              💡 Example: If you set 25, 50, 75 - bot will ONLY trade when Next Likely % is exactly 25%, 50%, or 75%
-          </div>
-      </div>
-  </div>
-
-  <label>Market</label>
+  <label style="margin-top: 15px;">Market</label>
   <div class="radio-group" id="marketRadios">
-      <div class="radio-option" onclick="selectMarket('R_10')">
+      <div class="radio-option" data-market="R_10">
           <input type="radio" name="market" value="R_10" id="marketR10" checked>
           <label for="marketR10">R_10</label>
       </div>
-      <div class="radio-option" onclick="selectMarket('R_25')">
+      <div class="radio-option" data-market="R_25">
           <input type="radio" name="market" value="R_25" id="marketR25">
           <label for="marketR25">R_25</label>
       </div>
-      <div class="radio-option" onclick="selectMarket('R_50')">
+      <div class="radio-option" data-market="R_50">
           <input type="radio" name="market" value="R_50" id="marketR50">
           <label for="marketR50">R_50</label>
       </div>
-      <div class="radio-option" onclick="selectMarket('R_75')">
+      <div class="radio-option" data-market="R_75">
           <input type="radio" name="market" value="R_75" id="marketR75">
           <label for="marketR75">R_75</label>
       </div>
-      <div class="radio-option" onclick="selectMarket('R_100')">
+      <div class="radio-option" data-market="R_100">
           <input type="radio" name="market" value="R_100" id="marketR100">
           <label for="marketR100">R_100</label>
       </div>
@@ -471,12 +346,10 @@ tbody tr:hover { background: #1e293b; }
   <input id="stoploss" class="save-setting" type="number" value="10" min="1">
   <label>Take Profit ($)</label>
   <input id="takeprofit" class="save-setting" type="number" value="10" min="1">
-  <label>Auto Trade Duration (Hours) - [0 = Unlimited]</label>
-  <input id="autoDurationHrs" class="save-setting" type="number" value="1" min="0" step="0.01">
 </div>
 
-<button onclick="toggleMarketCycle()" id="cycleBtn" class="btn-cycle">Auto Market Cycle: OFF</button>
-<button onclick="toggleCooldownLoop()" id="cooldownBtn" class="btn-cooldown">Cycle Cooldown Loop: OFF</button>
+<button id="cycleBtn" class="btn-cycle">Auto Market Cycle: OFF</button>
+<button id="cooldownBtn" class="btn-cooldown">Cycle Cooldown Loop: OFF</button>
 <div id="cycleTimerDisplay" class="cycle-timer-display">Next Loop in: --:--</div>
 
 <div class="card" style="margin-top: 0;">
@@ -484,14 +357,12 @@ tbody tr:hover { background: #1e293b; }
   <input id="cycleWaitTime" class="save-setting" type="number" value="5" min="1">
 </div>
 
-<button onclick="toggleReverseTrade()" id="reverseBtn" class="btn-reverse">Reverse Trade: OFF</button>
-
 <div class="buttons">
-  <button onclick="manualTrade()" id="manualBtn">Manual Trade</button>
-  <button onclick="toggleAuto()" id="autoBtn">Start Auto</button>
+  <button id="manualBtn">Manual Trade</button>
+  <button id="autoBtn">Start Auto</button>
 </div>
 
-<button onclick="resetStats()" class="reset-button-permanent">🔄 Reset All Stats</button>
+<button id="resetBtn" class="reset-button-permanent">🔄 Reset All Stats</button>
 
 <div class="card stats">
   <div><span>Trades</span><b id="trades">0</b></div>
@@ -504,7 +375,7 @@ tbody tr:hover { background: #1e293b; }
 <h3>Trade History</h3>
 <div class="table-container">
 <table>
-<thead><tr><th>#</th><th>Result</th><th>P/L</th><th>Market</th></tr></thead>
+<thead><tr><th>#</th><th>Mode</th><th>Result</th><th>P/L</th><th>Market</th></tr></thead>
 <tbody id="history"></tbody>
 </table>
 </div>
@@ -512,2016 +383,1161 @@ tbody tr:hover { background: #1e293b; }
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
 <script>
-// TensorFlow.js memory management configuration
-if (typeof tf !== 'undefined') {
-    tf.env().set('WEBGL_DELETE_TEXTURE_THRESHOLD', 0);
-    tf.env().set('WEBGL_FORCE_F16_TEXTURES', true);
-}
+(function() {
+  'use strict';
+  
+  // ============ SHARED CONFIG ============
+  const Config = {
+    currentMarketValue: 'R_10',
+    marketSequence: ["R_10", "R_25", "R_50", "R_75", "R_100"],
+    accountBalance: 0
+  };
 
-// ============ CORE VARIABLES ============
-let ws = null;
-let isConnected = false;
-let isAutoRunning = false;
-let currentContractId = null;
-let accountBalance = 0;
-let stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
-let digitHistory = [];
-let sessionStartTime = null;
-let autoStartTime = null; 
-let timerIntervalId = null;
-let isExplicitLogout = false;
-let lastPredictionConfidence = 0; 
-let previousPredictionConfidence = 0;
-let lastPredictionType = '-';
-let lastTradeTime = 0;
-let lastRequestTime = 0; 
-let currentConfidenceMode = 'range';
-let currentMarketValue = 'R_10';
-let isSpecificEnsembleActive = false;
-
-let isMarketCycleActive = false;
-let isCooldownLoopActive = false;
-let isCycleCooldown = false;
-const marketSequence = ["R_10", "R_25", "R_50", "R_75", "R_100"];
-let currentMarketIndex = 0;
-let isReverseTradeActive = false;
-let cycleTimerId = null;
-let isSignalWindowOpen = false;
-
-// ============ VIRTUAL TRADE VARIABLES ============
-let isVirtualTradeEnabled = false;
-let virtualLossStreak = 0;
-let hasSwatchedToLive = false;
-let virtualTradeHistory = [];
-
-// ============ ENHANCED ML VARIABLES v3 (PSF + LSTM OPTIMIZED) ============
-let bayesianAlpha = 1;
-let bayesianBeta = 1;
-let markovTransitionMatrix = {};
-let markovTransitionMatrix2ndOrder = {};
-let recentWinRates = [];
-let extendedHistory = [];
-let patternCache = {};
-let volatilityWindow = [];
-let detectedPattern = null;
-
-// PSF Variables
-let psfPatterns = [];
-let psfWindowSize = 10;
-let psfClusters = [];
-let psfPrediction = 50;
-
-// LSTM Variables (OPTIMIZED)
-let lstmModel = null;
-let lstmInitialized = false;
-let lstmTraining = false;
-let lstmLastTrainTime = null;
-let lstmSequenceLength = 15; // Optimized default
-let lstmBatchSize = 16; // Optimized default
-let lstmEpochs = 20; // Optimized default
-let lstmPrediction = 50;
-let lstmAccuracyScore = 0;
-let lstmLossValue = 0;
-let lstmTrainingSamples = 0;
-
-// Model performance tracking
-let modelAccuracies = {
-    heuristic: 0,
-    bayesian: 0,
-    markov: 0,
-    psf: 0,
-    lstm: 0
-};
-let modelPredictions = {
-    heuristic: [],
-    bayesian: [],
-    markov: [],
-    psf: [],
-    lstm: []
-};
-
-// Advanced pattern detection
-let fuzzyPatternCache = {};
-let patternDecayTimer = 0;
-
-// Decay factor for Bayesian
-const BAYESIAN_DECAY = 0.995;
-
-// Auto-retraining intervals
-let lstmRetrainInterval = null;
-let psfUpdateInterval = null;
-
-// ============ VIRTUAL TRADE FUNCTIONS ============
-function toggleVirtualTrade() {
-    isVirtualTradeEnabled = document.getElementById('virtualTradeToggle').checked;
-    const settingsDiv = document.getElementById('virtualTradeSettings');
-    const statusDiv = document.getElementById('virtualTradeStatus');
-    const switchNotice = document.getElementById('switchNotice');
-    
-    if (isVirtualTradeEnabled) {
-        settingsDiv.style.display = 'block';
-        statusDiv.classList.add('active');
-        virtualLossStreak = 0;
-        hasSwatchedToLive = false;
-        switchNotice.classList.remove('active');
-        updateVirtualTradeUI();
-        addLog("🎮 Virtual Trade Mode ENABLED - Trading on virtual account first", "success");
-    } else {
-        settingsDiv.style.display = 'none';
-        statusDiv.classList.remove('active');
-        switchNotice.classList.remove('active');
-        virtualLossStreak = 0;
-        hasSwatchedToLive = false;
-        addLog("Virtual Trade Mode DISABLED - Trading on main account", "warn");
-    }
-    
-    saveSettings();
-}
-
-function updateVirtualTradeUI() {
-    document.getElementById('virtualLossCount').textContent = virtualLossStreak;
-    const threshold = parseInt(document.getElementById('virtualLossThreshold').value) || 3;
-    document.getElementById('virtualThresholdDisplay').textContent = threshold;
-    
-    const statusDiv = document.getElementById('virtualTradeStatus');
-    const switchNotice = document.getElementById('switchNotice');
-    
-    if (hasSwatchedToLive) {
-        statusDiv.style.display = 'none';
-        switchNotice.classList.add('active');
-    } else {
-        statusDiv.classList.add('active');
-        switchNotice.classList.remove('active');
-    }
-}
-
-function handleVirtualTradeResult(isWin) {
-    if (!isVirtualTradeEnabled || hasSwatchedToLive) return;
-    
-    if (isWin) {
-        virtualLossStreak = 0;
-        addLog("🎮 Virtual Trade WIN - Loss streak reset to 0", "success");
-    } else {
-        virtualLossStreak++;
-        addLog(`🎮 Virtual Trade LOSS - Consecutive losses: ${virtualLossStreak}`, "error");
-        
-        const threshold = parseInt(document.getElementById('virtualLossThreshold').value) || 3;
-        
-        if (virtualLossStreak >= threshold) {
-            hasSwatchedToLive = true;
-            addLog(`⚠️ SWITCHING TO LIVE ACCOUNT after ${virtualLossStreak} consecutive losses!`, "warn");
-            addLog("🔴 Now trading on LIVE account - Real money at risk!", "error");
-            updateVirtualTradeUI();
-        }
-    }
-    
-    updateVirtualTradeUI();
-}
-
-function isCurrentlyVirtualMode() {
-    return isVirtualTradeEnabled && !hasSwatchedToLive;
-}
-
-// ============ UTILITY FUNCTIONS ============
-function addLog(msg, type = 'info') {
-    const container = document.getElementById('logContainer');
-    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const entry = document.createElement('div');
-    entry.className = 'log-entry';
-    entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-msg-${type}">${msg}</span>`;
-    container.appendChild(entry);
-    container.scrollTop = container.scrollHeight;
-}
-
-function updateSignalWindowTimer() {
-    const now = new Date();
-    const sec = now.getSeconds();
-    const timerEl = document.getElementById('signalTimerDisplay');
-    
-    const closeWindowSize = parseInt(document.getElementById('closingSec').value) || 10;
-    const openWindowSize = parseInt(document.getElementById('openingSec').value) || 10;
-    
-    const inClosingWindow = (sec >= (60 - closeWindowSize));
-    const inOpeningWindow = (sec <= openWindowSize);
-    
-    if (inClosingWindow || inOpeningWindow) {
-        isSignalWindowOpen = true;
-        if (timerEl) {
-            timerEl.style.color = "#22c55e";
-            timerEl.style.borderColor = "#22c55e";
-            timerEl.style.background = "rgba(34, 197, 94, 0.1)";
-            timerEl.innerHTML = `SCANNING SIGNAL... (${sec}s)`;
-        }
-    } else {
-        isSignalWindowOpen = false;
-        const nextWindowIn = (60 - closeWindowSize) - sec;
-        if (timerEl) {
-            timerEl.style.color = "#f59e0b";
-            timerEl.style.borderColor = "#334155";
-            timerEl.style.background = "#020617";
-            timerEl.innerHTML = `WAITING FOR WINDOW: ${nextWindowIn}s`;
-        }
-    }
-}
-
-function selectConfidenceMode(mode) {
-    currentConfidenceMode = mode;
-    document.querySelectorAll('#confidenceModeRadios .radio-option').forEach(opt => {
-        opt.classList.remove('selected');
-    });
-    const selectedOption = document.querySelector(`#confidenceModeRadios .radio-option input[value="${mode}"]`).parentElement;
-    selectedOption.classList.add('selected');
-    document.getElementById(`mode${mode.charAt(0).toUpperCase() + mode.slice(1)}`).checked = true;
-    
-    toggleConfidenceUI();
-    saveSettings();
-}
-
-function selectMarket(market) {
-    currentMarketValue = market;
-    document.querySelectorAll('#marketRadios .radio-option').forEach(opt => {
-        opt.classList.remove('selected');
-    });
-    const selectedOption = document.querySelector(`#marketRadios .radio-option input[value="${market}"]`).parentElement;
-    selectedOption.classList.add('selected');
-    document.getElementById(`market${market.replace('_', '')}`).checked = true;
-    
-    if (isConnected) subscribeToTicks();
-    saveSettings();
-}
-
-function toggleSpecificEnsemble() {
-    isSpecificEnsembleActive = document.getElementById('specificEnsembleToggle').checked;
-    const section = document.getElementById('specificEnsembleSection');
-    
-    if (isSpecificEnsembleActive) {
-        section.classList.add('active');
-        document.getElementById('patternEnsembleMax').value = 0;
-        document.getElementById('patternEnsembleMin').value = 0;
-        addLog("Specific Next Likely % Filter ENABLED", "info");
-    } else {
-        section.classList.remove('active');
-        addLog("Specific Next Likely % Filter DISABLED", "warn");
-    }
-    
-    updateEnsembleFilterStatus();
-    saveSettings();
-}
-
-function updateEnsembleFilterStatus() {
-    const maxEnsemble = parseInt(document.getElementById('patternEnsembleMax').value) || 0;
-    const minEnsemble = parseInt(document.getElementById('patternEnsembleMin').value) || 0;
-    const statusEl = document.getElementById('ensembleFilterStatus');
-    const warningEl = document.getElementById('filterWarning');
-    
-    let activeCount = 0;
-    if (maxEnsemble > 0) activeCount++;
-    if (minEnsemble > 0) activeCount++;
-    if (isSpecificEnsembleActive) activeCount++;
-    
-    if (activeCount > 1) {
-        warningEl.style.display = 'block';
-        statusEl.textContent = '⚠️ CONFLICT! Multiple filters active - Only ONE allowed';
-        statusEl.style.color = '#ef4444';
-        statusEl.style.background = 'rgba(239, 68, 68, 0.1)';
-        statusEl.style.border = '1px solid #ef4444';
-        return;
-    }
-    
-    warningEl.style.display = 'none';
-    statusEl.style.background = '#1e293b';
-    statusEl.style.border = 'none';
-    
-    if (activeCount === 0) {
-        statusEl.textContent = '🔓 All filters DISABLED - Trading on pattern match only';
-        statusEl.style.color = '#22c55e';
-    }
-    else if (maxEnsemble > 0) {
-        statusEl.textContent = `🔒 Active: Trade if Next Likely % ≤ ${maxEnsemble}% (LOW confidence)`;
-        statusEl.style.color = '#f59e0b';
-    }
-    else if (minEnsemble > 0) {
-        statusEl.textContent = `🔒 Active: Trade if Next Likely % ≥ ${minEnsemble}% (HIGH confidence)`;
-        statusEl.style.color = '#3b82f6';
-    }
-    else if (isSpecificEnsembleActive) {
-        const specs = [
-            parseInt(document.getElementById('specEns1').value),
-            parseInt(document.getElementById('specEns2').value),
-            parseInt(document.getElementById('specEns3').value),
-            parseInt(document.getElementById('specEns4').value),
-            parseInt(document.getElementById('specEns5').value)
-        ].filter(v => !isNaN(v) && v >= 0 && v <= 100);
-        statusEl.textContent = `🎯 Active: Trade if Next Likely % = ${specs.join(', ')}%`;
-        statusEl.style.color = '#8b5cf6';
-    }
-}
-
-function toggleConfidenceUI() {
-    const mode = currentConfidenceMode;
-    document.getElementById('rangeUI').style.display = (mode === 'range') ? 'block' : 'none';
-    document.getElementById('specificUI').style.display = (mode === 'specific') ? 'block' : 'none';
-    document.getElementById('sequenceUI').style.display = (mode === 'sequence') ? 'block' : 'none';
-    document.getElementById('patternUI').style.display = (mode === 'pattern') ? 'block' : 'none';
-    
-    if (mode === 'pattern') {
-        updateEnsembleFilterStatus();
-    }
-    
-    addLog(`Confidence Mode: ${mode}`, "info");
-}
-
-function saveSettings() {
-    const settings = {
-        confidenceMode: currentConfidenceMode,
-        market: currentMarketValue,
-        specificEnsembleActive: isSpecificEnsembleActive,
-        virtualTradeEnabled: isVirtualTradeEnabled,
-        virtualLossStreak: virtualLossStreak,
-        hasSwatchedToLive: hasSwatchedToLive
-    };
-    document.querySelectorAll('.save-setting').forEach(el => settings[el.id] = el.value);
-    localStorage.setItem('bot_settings_v10_ml', JSON.stringify(settings));
-}
-
-function loadSettings() {
-    const saved = localStorage.getItem('bot_settings_v10_ml');
-    if (saved) {
-        const settings = JSON.parse(saved);
-        for (const id in settings) {
-            const el = document.getElementById(id);
-            if (el) el.value = settings[id];
-        }
-        
-        if (settings.confidenceMode) {
-            currentConfidenceMode = settings.confidenceMode;
-            selectConfidenceMode(currentConfidenceMode);
-        }
-        
-        if (settings.market) {
-            currentMarketValue = settings.market;
-            selectMarket(currentMarketValue);
-        }
-        
-        if (settings.specificEnsembleActive) {
-            isSpecificEnsembleActive = settings.specificEnsembleActive;
-            document.getElementById('specificEnsembleToggle').checked = isSpecificEnsembleActive;
-            if (isSpecificEnsembleActive) {
-                document.getElementById('specificEnsembleSection').classList.add('active');
-            }
-        }
-        
-        if (settings.virtualTradeEnabled !== undefined) {
-            isVirtualTradeEnabled = settings.virtualTradeEnabled;
-            document.getElementById('virtualTradeToggle').checked = isVirtualTradeEnabled;
-            if (isVirtualTradeEnabled) {
-                document.getElementById('virtualTradeSettings').style.display = 'block';
-            }
-        }
-        
-        if (settings.virtualLossStreak !== undefined) {
-            virtualLossStreak = settings.virtualLossStreak;
-        }
-        
-        if (settings.hasSwatchedToLive !== undefined) {
-            hasSwatchedToLive = settings.hasSwatchedToLive;
-        }
-        
-        updateVirtualTradeUI();
-    }
-    toggleConfidenceUI();
-    
-    const savedExtHistory = localStorage.getItem('extended_history_v10');
-    if(savedExtHistory) {
-        try {
-            extendedHistory = JSON.parse(savedExtHistory);
-            addLog(`Loaded ${extendedHistory.length} historical ticks for ML`, "success");
-        } catch(e) {
-            addLog("Error loading extended history", "warn");
-            extendedHistory = [];
-        }
-    }
-    
-    const savedHistory = localStorage.getItem('trade_history_v10');
-    if(savedHistory) document.getElementById('history').innerHTML = savedHistory;
-    
-    const savedStats = localStorage.getItem('trade_stats_v10');
-    if(savedStats) { 
-        stats = JSON.parse(savedStats); 
-        updateStats(); 
-    }
-    
-    const savedBayesian = localStorage.getItem('bayesian_params_v10');
-    if(savedBayesian) {
-        const params = JSON.parse(savedBayesian);
-        bayesianAlpha = params.alpha || 1;
-        bayesianBeta = params.beta || 1;
-    }
-    
-    const savedMarkov = localStorage.getItem('markov_matrix_v10');
-    if(savedMarkov) {
-        try {
-            markovTransitionMatrix = JSON.parse(savedMarkov);
-            addLog("Loaded Markov transition matrix", "success");
-        } catch(e) {
-            markovTransitionMatrix = {};
-        }
-    }
-    
-    const savedMarkov2nd = localStorage.getItem('markov_matrix_2nd_v10');
-    if(savedMarkov2nd) {
-        try {
-            markovTransitionMatrix2ndOrder = JSON.parse(savedMarkov2nd);
-            addLog("Loaded 2nd-order Markov matrix", "success");
-        } catch(e) {
-            markovTransitionMatrix2ndOrder = {};
-        }
-    }
-}
-
-document.querySelectorAll('.save-setting').forEach(el => {
-    el.addEventListener('input', saveSettings);
-    el.addEventListener('change', saveSettings);
-});
-
-// ============ WEBSOCKET CONNECTION ============
-function connect() {
-  const token = document.getElementById('token').value.trim();
-  if (!token) { addLog("Error: API Token missing.", "error"); return; }
-  if (ws) ws.close();
-  sessionStorage.setItem('derivToken', token);
-  isExplicitLogout = false;
-  updateStatus('Connecting...', 'disconnected');
-  ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
-  ws.onopen = () => { addLog("WebSocket Connected.", "info"); sendAPIRequest({ authorize: token }); };
-  ws.onmessage = (msg) => handleMessage(JSON.parse(msg.data));
-  ws.onclose = () => {
-    isConnected = false;
-    updateStatus('Disconnected', 'disconnected');
-    document.getElementById('accountType').style.display = 'none';
-    if (!isExplicitLogout) { 
-        addLog("Connection lost. Reconnecting in 5s...", "warn"); 
-        setTimeout(connect, 5000); 
+  // ============ APP MODULES ============
+  const App = {
+    modules: {},
+    init() {
+      this.modules.UI.init();
+      this.modules.Connection.init();
+      this.modules.Analyzer.init();
+      this.modules.VirtualTrade.init();
+      this.modules.Trader.init();
+      
+      this.modules.UI.loadSettings();
+      
+      const savedToken = sessionStorage.getItem('derivToken');
+      if (savedToken) { 
+        document.getElementById('token').value = savedToken; 
+        setTimeout(() => this.modules.Connection.connect(), 1000); 
+      }
+      
+      this.modules.UI.addLog("System: ML Engine Initialized.", "success");
     }
   };
-  ws.onerror = (error) => {
-    addLog("WebSocket error occurred", "error");
-    console.error("WebSocket error:", error);
-  };
-}
 
-function handleMessage(data) {
-  if (data.error) { 
-    addLog(`API ERROR: ${data.error.message}`, "error"); 
-    console.error("API Error:", data.error);
-    return; 
-  }
-  
-  if (data.authorize) {
-    isConnected = true;
-    updateStatus('Connected', 'connected');
-    const accTypeEl = document.getElementById('accountType');
-    const isVirtual = data.authorize.is_virtual === 1 || data.authorize.loginid.includes('VRTC');
-    accTypeEl.textContent = isVirtual ? 'Demo Account' : 'Live Account';
-    accTypeEl.className = 'account-type ' + (isVirtual ? 'demo-badge' : 'live-badge');
-    accTypeEl.style.display = 'block';
-    addLog(`Authorized: ${data.authorize.email}`, "success");
-    sendAPIRequest({ balance: 1, subscribe: 1 });
-    subscribeToTicks();
-    startSessionTimer();
+  // ============ CONNECTION MODULE ============
+  App.modules.Connection = (function() {
+    let ws = null;
+    let isConnected = false;
+    let isExplicitLogout = false;
+    let lastRequestTime = 0;
     
-    const persistedAuto = localStorage.getItem('isAutoRunning') === 'true';
-    if(persistedAuto && !isAutoRunning) {
-        resumeAutoTrade();
-    }
-  }
-  
-  if (data.balance) { 
-    accountBalance = data.balance.balance; 
-    updateBalance(); 
-  }
-  
-  if (data.tick) {
-    const lastDigit = parseInt(data.tick.quote.toString().slice(-1));
-    addDigitToAnalyzer(lastDigit);
-  }
-  
-  if (data.buy) {
-    currentContractId = data.buy.contract_id;
-    const tradeMode = isCurrentlyVirtualMode() ? "VIRTUAL" : "LIVE";
-    addLog(`${tradeMode} Trade Placed (ID: ${currentContractId})`, "success");
-    sendAPIRequest({ proposal_open_contract: 1, contract_id: currentContractId, subscribe: 1 });
-  }
-  
-  if (data.proposal_open_contract) {
-    const contract = data.proposal_open_contract;
-    if (contract.is_settled === 1 || ['won', 'lost', 'sold'].includes(contract.status)) {
-      handleTradeResult(contract);
-      currentContractId = null;
-      if (data.subscription) sendAPIRequest({ forget: data.subscription.id });
-    }
-  }
-}
-
-function resumeAutoTrade() {
-    isAutoRunning = true;
-    const btn = document.getElementById('autoBtn');
-    const shutdownUI = document.getElementById('shutdownDisplay');
-    autoStartTime = parseInt(localStorage.getItem('autoStartTime')) || Date.now();
-    shutdownUI.style.display = 'block';
-    btn.textContent = 'Stop Auto'; 
-    btn.style.background = '#ef4444';
-    addLog("Resuming Persistent Auto-Trade...", "success");
-    
-    if (!lstmInitialized) {
-        initializeLSTM();
-    }
-}
-
-// ============ PSF (Pattern Sequence Forecasting) FUNCTIONS ============
-
-function calculateEuclideanDistance(arr1, arr2) {
-    if (arr1.length !== arr2.length) return Infinity;
-    let sum = 0;
-    for (let i = 0; i < arr1.length; i++) {
-        sum += Math.pow(arr1[i] - arr2[i], 2);
-    }
-    return Math.sqrt(sum);
-}
-
-function levenshtein(a, b) {
-    const matrix = Array(a.length + 1).fill(null).map(() => Array(b.length + 1).fill(0));
-    
-    for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
-    for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
-    
-    for (let i = 1; i <= a.length; i++) {
-        for (let j = 1; j <= b.length; j++) {
-            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-            matrix[i][j] = Math.min(
-                matrix[i - 1][j] + 1,
-                matrix[i][j - 1] + 1,
-                matrix[i - 1][j - 1] + cost
-            );
+    function connect() {
+      const token = document.getElementById('token').value.trim();
+      if (!token) { 
+        App.modules.UI.addLog("Error: API Token missing.", "error"); 
+        return; 
+      }
+      if (ws) ws.close();
+      sessionStorage.setItem('derivToken', token);
+      isExplicitLogout = false;
+      App.modules.UI.updateStatus('Connecting...', 'disconnected');
+      
+      ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+      
+      ws.onopen = () => { 
+        App.modules.UI.addLog("WebSocket Connected.", "info"); 
+        sendAPIRequest({ authorize: token }); 
+      };
+      
+      ws.onmessage = (msg) => handleMessage(JSON.parse(msg.data));
+      
+      ws.onclose = () => {
+        isConnected = false;
+        App.modules.UI.updateStatus('Disconnected', 'disconnected');
+        document.getElementById('accountType').style.display = 'none';
+        if (!isExplicitLogout) { 
+          App.modules.UI.addLog("Connection lost. Reconnecting in 5s...", "warn"); 
+          setTimeout(connect, 5000); 
         }
+      };
+      
+      ws.onerror = (error) => { console.error("WebSocket error:", error); };
     }
     
-    return matrix[a.length][b.length];
-}
-
-function autoAdjustPSFWindowSize() {
-    const volatility = calculateVolatility(extendedHistory, 100);
-    
-    if (volatility > 3.0) {
-        psfWindowSize = 5;
-    } else if (volatility > 2.0) {
-        psfWindowSize = 8;
-    } else if (volatility > 1.5) {
-        psfWindowSize = 10;
-    } else {
-        psfWindowSize = 15;
-    }
-    
-    if (extendedHistory.length < psfWindowSize * 5) {
-        psfWindowSize = Math.max(3, Math.floor(extendedHistory.length / 5));
-    }
-    
-    return psfWindowSize;
-}
-
-function buildPSFPatterns() {
-    if (extendedHistory.length < 50) return;
-    
-    const windowSize = autoAdjustPSFWindowSize();
-    psfPatterns = [];
-    
-    for (let i = 0; i < extendedHistory.length - windowSize - 1; i++) {
-        const pattern = extendedHistory.slice(i, i + windowSize);
-        const nextDigit = extendedHistory[i + windowSize];
+    function handleMessage(data) {
+      if (data.error) { 
+        App.modules.UI.addLog(`API ERROR: ${data.error.message}`, "error"); 
+        return; 
+      }
+      
+      if (data.authorize) {
+        isConnected = true;
+        App.modules.UI.updateStatus('Connected', 'connected');
+        const accTypeEl = document.getElementById('accountType');
+        const isVirtual = data.authorize.is_virtual === 1 || data.authorize.loginid.includes('VRTC');
+        accTypeEl.textContent = isVirtual ? 'Demo Account' : 'Live Account';
+        accTypeEl.className = 'account-type ' + (isVirtual ? 'demo-badge' : 'live-badge');
+        accTypeEl.style.display = 'block';
+        App.modules.UI.addLog(`Authorized: ${data.authorize.email}`, "success");
+        sendAPIRequest({ balance: 1, subscribe: 1 });
+        subscribeToTicks();
+        App.modules.UI.startSessionTimer();
         
-        const recency = Math.exp(-i / 1000);
-        
-        psfPatterns.push({ 
-            pattern, 
-            nextDigit, 
-            weight: recency,
-            index: i 
-        });
-    }
-    
-    addLog(`PSF: Built ${psfPatterns.length} patterns (window=${windowSize})`, "info");
-}
-
-function calculatePSFPrediction() {
-    if (psfPatterns.length === 0 || digitHistory.length < psfWindowSize) {
-        return 50;
-    }
-    
-    const currentPattern = digitHistory.slice(0, psfWindowSize);
-    
-    const similarities = psfPatterns.map(p => {
-        const euclidean = calculateEuclideanDistance(currentPattern, p.pattern);
-        const levenshtein_dist = levenshtein(currentPattern, p.pattern);
-        
-        const combinedDistance = (euclidean * 0.6) + (levenshtein_dist * 0.4);
-        
-        return {
-            ...p,
-            distance: combinedDistance
-        };
-    });
-    
-    similarities.sort((a, b) => a.distance - b.distance);
-    const topK = Math.min(10, Math.max(3, Math.floor(psfPatterns.length * 0.02)));
-    const topSimilar = similarities.slice(0, topK);
-    
-    if (topSimilar.length === 0) return 50;
-    
-    let totalWeight = 0;
-    let weightedSum = 0;
-    
-    topSimilar.forEach(s => {
-        const distanceWeight = 1 / (1 + s.distance);
-        const finalWeight = distanceWeight * s.weight;
-        
-        const isOver5 = s.nextDigit > 5 ? 1 : 0;
-        weightedSum += isOver5 * finalWeight;
-        totalWeight += finalWeight;
-    });
-    
-    const prediction = totalWeight > 0 ? (weightedSum / totalWeight) * 100 : 50;
-    
-    modelPredictions.psf.push({ prediction });
-    
-    return Math.min(98, Math.max(2, prediction));
-}
-
-function updatePSFPeriodically() {
-    if (extendedHistory.length % 100 === 0 && extendedHistory.length > 50) {
-        buildPSFPatterns();
-    }
-}
-
-// ============ LSTM NEURAL NETWORK FUNCTIONS (OPTIMIZED) ============
-
-function autoAdjustLSTMParams() {
-    const dataSize = extendedHistory.length;
-    const volatility = calculateVolatility(extendedHistory, 100);
-    
-    if (dataSize < 200) {
-        lstmSequenceLength = 8;
-    } else if (dataSize < 500) {
-        lstmSequenceLength = 12;
-    } else if (dataSize < 1000) {
-        lstmSequenceLength = 15;
-    } else {
-        lstmSequenceLength = 20;
-    }
-    
-    if (dataSize < 300) {
-        lstmBatchSize = 8;
-    } else if (dataSize < 1000) {
-        lstmBatchSize = 16;
-    } else {
-        lstmBatchSize = 32;
-    }
-    
-    if (volatility > 3.0) {
-        lstmEpochs = 15;
-    } else if (volatility > 2.0) {
-        lstmEpochs = 20;
-    } else {
-        lstmEpochs = 25;
-    }
-    
-    addLog(`LSTM Params: seq=${lstmSequenceLength}, batch=${lstmBatchSize}, epochs=${lstmEpochs}`, "info");
-}
-
-async function initializeLSTM() {
-    if (extendedHistory.length < 100) {
-        addLog("LSTM: Need 100+ ticks to initialize", "warn");
-        document.getElementById('lstmStatusText').textContent = `Collecting data... (${extendedHistory.length}/100)`;
-        return;
-    }
-    
-    try {
-        addLog("🧠 Initializing LSTM Neural Network...", "info");
-        document.getElementById('lstmStatusText').textContent = "Initializing model architecture...";
-        
-        autoAdjustLSTMParams();
-        
-        if (lstmModel) {
-            lstmModel.dispose();
-            lstmModel = null;
+        const persistedAuto = localStorage.getItem('isAutoRunning') === 'true';
+        if(persistedAuto && !App.modules.Trader.getAutoRunning()) {
+          App.modules.Trader.resumeAutoTrade();
         }
-        
-        await tf.ready();
-        addLog(`TensorFlow.js backend: ${tf.getBackend()}`, "info");
-        
-        lstmModel = tf.sequential();
-        
-        lstmModel.add(tf.layers.lstm({
-            units: 32,
-            returnSequences: false,
-            inputShape: [lstmSequenceLength, 1],
-            recurrentDropout: 0.1
-        }));
-        
-        lstmModel.add(tf.layers.dense({ units: 16, activation: 'relu' }));
-        lstmModel.add(tf.layers.dropout({ rate: 0.2 }));
-        lstmModel.add(tf.layers.dense({ units: 1, activation: 'sigmoid' }));
-        
-        const optimizer = tf.train.adam(0.0005);
-        
-        lstmModel.compile({
-            optimizer: optimizer,
-            loss: 'binaryCrossentropy',
-            metrics: ['accuracy']
-        });
-        
-        addLog("✅ LSTM Model Architecture Created (Optimized Build)", "success");
-        document.getElementById('lstmStatusText').textContent = "Model ready - Starting initial training...";
-        
-        lstmInitialized = true;
-        
-        setTimeout(() => {
-            trainLSTM();
-        }, 1000);
-        
-        if (!lstmRetrainInterval) {
-            lstmRetrainInterval = setInterval(() => {
-                if (isAutoRunning && extendedHistory.length % 200 === 0 && !lstmTraining) {
-                    trainLSTM();
-                }
-            }, 120000);
+      }
+      
+      if (data.balance) { 
+        Config.accountBalance = data.balance.balance; 
+        App.modules.UI.updateBalance(); 
+      }
+      
+      if (data.tick) {
+        const lastDigit = parseInt(data.tick.quote.toString().slice(-1));
+        App.modules.Analyzer.processTick(lastDigit);
+      }
+      
+      if (data.buy) {
+        App.modules.Trader.setContractId(data.buy.contract_id);
+        App.modules.UI.addLog(`Trade Placed (ID: ${data.buy.contract_id})`, "success");
+        sendAPIRequest({ proposal_open_contract: 1, contract_id: data.buy.contract_id, subscribe: 1 });
+      }
+      
+      if (data.proposal_open_contract) {
+        const contract = data.proposal_open_contract;
+        if (contract.is_settled === 1 || ['won', 'lost', 'sold'].includes(contract.status)) {
+          App.modules.Trader.handleTradeResult(contract);
+          App.modules.Trader.setContractId(null);
+          if (data.subscription) sendAPIRequest({ forget: data.subscription.id });
         }
-        
-    } catch (error) {
-        addLog(`LSTM Init Error: ${error.message}`, "error");
-        console.error("LSTM Error:", error);
-        document.getElementById('lstmStatusText').textContent = `Error: ${error.message}`;
-        lstmInitialized = false;
-    }
-}
-
-function prepareTrainingData() {
-    const sequences = [];
-    const labels = [];
-    
-    const maxSamples = 1000;
-    const dataSource = extendedHistory.length > 500 ? extendedHistory : [...extendedHistory, ...digitHistory];
-    
-    let sampleCount = 0;
-    for (let i = lstmSequenceLength; i < dataSource.length && sampleCount < maxSamples; i++) {
-        const sequence = dataSource.slice(i - lstmSequenceLength, i);
-        const nextDigit = dataSource[i];
-        
-        sequences.push(sequence.map(d => [d / 10]));
-        labels.push([nextDigit > 5 ? 1 : 0]);
-        sampleCount++;
+      }
     }
     
-    return { sequences, labels };
-}
-
-async function trainLSTM() {
-    if (!lstmModel || lstmTraining) {
-        addLog("LSTM: Training already in progress or model not ready", "warn");
-        return;
-    }
-    
-    lstmTraining = true;
-    
-    try {
-        const startTime = Date.now();
-        
-        addLog("🧠 LSTM Training Started...", "info");
-        document.getElementById('lstmStatusText').textContent = "Training in progress...";
-        document.getElementById('lstmProgressBar').style.width = '0%';
-        
-        const { sequences, labels } = prepareTrainingData();
-        
-        if (sequences.length < 30) {
-            addLog("LSTM: Not enough sequences for training (need 30+)", "warn");
-            lstmTraining = false;
-            return;
-        }
-        
-        lstmTrainingSamples = sequences.length;
-        addLog(`LSTM: Training on ${lstmTrainingSamples} samples`, "info");
-        
-        let xs = null;
-        let ys = null;
-        
-        try {
-            xs = tf.tensor3d(sequences);
-            ys = tf.tensor2d(labels);
-            
-            await tf.nextFrame();
-            
-            const history = await lstmModel.fit(xs, ys, {
-                epochs: lstmEpochs,
-                batchSize: lstmBatchSize,
-                validationSplit: 0.15,
-                shuffle: true,
-                verbose: 0,
-                callbacks: {
-                    onEpochBegin: async (epoch) => {
-                        await tf.nextFrame();
-                    },
-                    onEpochEnd: async (epoch, logs) => {
-                        const progress = ((epoch + 1) / lstmEpochs) * 100;
-                        document.getElementById('lstmProgressBar').style.width = `${progress}%`;
-                        
-                        if ((epoch + 1) % 5 === 0) {
-                            addLog(`LSTM Epoch ${epoch + 1}/${lstmEpochs} - Loss: ${logs.loss.toFixed(4)}`, "info");
-                        }
-                        
-                        await tf.nextFrame();
-                    },
-                    onTrainEnd: async () => {
-                        await tf.nextFrame();
-                    }
-                }
-            });
-            
-            const finalLoss = history.history.loss[history.history.loss.length - 1];
-            const finalAccuracy = history.history.acc ? history.history.acc[history.history.acc.length - 1] : 
-                                 (history.history.accuracy ? history.history.accuracy[history.history.accuracy.length - 1] : 0);
-            
-            lstmLossValue = finalLoss;
-            lstmAccuracyScore = finalAccuracy * 100;
-            lstmLastTrainTime = new Date();
-            
-            document.getElementById('lstmLoss').textContent = finalLoss.toFixed(4);
-            document.getElementById('lstmAccuracy').textContent = `${(finalAccuracy * 100).toFixed(1)}%`;
-            document.getElementById('lstmSamples').textContent = lstmTrainingSamples;
-            document.getElementById('lstmLastRetrain').textContent = lstmLastTrainTime.toLocaleTimeString();
-            
-            const trainingTime = ((Date.now() - startTime) / 1000).toFixed(1);
-            addLog(`✅ LSTM Training Complete (${trainingTime}s) - Loss: ${finalLoss.toFixed(4)}, Acc: ${(finalAccuracy * 100).toFixed(1)}%`, "success");
-            document.getElementById('lstmStatusText').textContent = `Trained on ${lstmTrainingSamples} samples - Ready`;
-            document.getElementById('lstmProgressBar').style.width = '100%';
-            
-            modelAccuracies.lstm = lstmAccuracyScore;
-            
-        } finally {
-            if (xs) xs.dispose();
-            if (ys) ys.dispose();
-            
-            await tf.nextFrame();
-        }
-        
-        lstmTraining = false;
-        
-    } catch (error) {
-        lstmTraining = false;
-        addLog(`LSTM Training Error: ${error.message}`, "error");
-        console.error("LSTM Training Error:", error);
-        document.getElementById('lstmStatusText').textContent = `Training failed: ${error.message}`;
-        document.getElementById('lstmProgressBar').style.width = '0%';
-        
-        if (error.message.includes('memory') || error.message.includes('OOM')) {
-            addLog("Memory error detected - reducing LSTM complexity...", "warn");
-            lstmEpochs = Math.max(10, Math.floor(lstmEpochs * 0.5));
-            lstmBatchSize = Math.max(4, Math.floor(lstmBatchSize * 0.5));
-            addLog(`Reduced to: epochs=${lstmEpochs}, batch=${lstmBatchSize}`, "warn");
-        }
-    }
-}
-
-async function calculateLSTMPrediction() {
-    if (!lstmModel || !lstmInitialized || digitHistory.length < lstmSequenceLength) {
-        return 50;
-    }
-    
-    if (lstmTraining) {
-        return lstmPrediction;
-    }
-    
-    let input = null;
-    let prediction = null;
-    
-    try {
-        const sequence = digitHistory.slice(0, lstmSequenceLength);
-        const normalizedSeq = sequence.map(d => [d / 10]);
-        
-        input = tf.tensor3d([normalizedSeq]);
-        prediction = lstmModel.predict(input);
-        const predValue = (await prediction.data())[0];
-        
-        const confidence = predValue * 100;
-        
-        modelPredictions.lstm.push({ prediction: confidence });
-        
-        lstmPrediction = confidence;
-        return Math.min(98, Math.max(2, confidence));
-        
-    } catch (error) {
-        console.error("LSTM Prediction Error:", error);
-        return 50;
-    } finally {
-        if (input) input.dispose();
-        if (prediction) prediction.dispose();
-    }
-}
-
-// ============ ENHANCED ML FUNCTIONS v3 ============
-
-function smoothOutliers(digit, history) {
-    if (history.length < 10) return digit;
-    
-    const mean = history.reduce((a, b) => a + b, 0) / history.length;
-    const variance = history.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / history.length;
-    const stdDev = Math.sqrt(variance);
-    
-    if (stdDev > 0 && Math.abs(digit - mean) > 3 * stdDev) {
-        const smoothed = Math.round(mean);
-        addLog(`Outlier detected: ${digit} → smoothed to ${smoothed}`, "warn");
-        return smoothed;
-    }
-    
-    return digit;
-}
-
-function calculateVolatility(data, windowSize = 50) {
-    if (data.length < windowSize) windowSize = data.length;
-    if (windowSize < 2) return 0;
-    
-    const recent = data.slice(0, windowSize);
-    const mean = recent.reduce((a, b) => a + b, 0) / recent.length;
-    const variance = recent.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / recent.length;
-    return Math.sqrt(variance);
-}
-
-function updateBayesianModel(isOver5) {
-    bayesianAlpha *= BAYESIAN_DECAY;
-    bayesianBeta *= BAYESIAN_DECAY;
-    
-    if (isOver5) {
-        bayesianAlpha += 1;
-    } else {
-        bayesianBeta += 1;
-    }
-    
-    if ((bayesianAlpha + bayesianBeta) % 20 < 1) {
-        localStorage.setItem('bayesian_params_v10', JSON.stringify({
-            alpha: bayesianAlpha,
-            beta: bayesianBeta
-        }));
-    }
-    
-    const posteriorMean = bayesianAlpha / (bayesianAlpha + bayesianBeta);
-    return posteriorMean * 100;
-}
-
-function updateMarkovModel(currentDigit) {
-    if (digitHistory.length < 1) return;
-    
-    const prevDigit = digitHistory[0];
-    if (!markovTransitionMatrix[prevDigit]) {
-        markovTransitionMatrix[prevDigit] = Array(10).fill(0);
-    }
-    markovTransitionMatrix[prevDigit][currentDigit]++;
-    
-    if (digitHistory.length >= 2) {
-        const state = `${digitHistory[1]}-${digitHistory[0]}`;
-        if (!markovTransitionMatrix2ndOrder[state]) {
-            markovTransitionMatrix2ndOrder[state] = Array(10).fill(0);
-        }
-        markovTransitionMatrix2ndOrder[state][currentDigit]++;
-    }
-    
-    if (digitHistory.length % 50 === 0) {
-        localStorage.setItem('markov_matrix_v10', JSON.stringify(markovTransitionMatrix));
-        localStorage.setItem('markov_matrix_2nd_v10', JSON.stringify(markovTransitionMatrix2ndOrder));
-    }
-}
-
-function calculateMarkovPrediction() {
-    let prediction = 50;
-    
-    if (digitHistory.length >= 2) {
-        const state = `${digitHistory[1]}-${digitHistory[0]}`;
-        if (markovTransitionMatrix2ndOrder[state]) {
-            const transitions = markovTransitionMatrix2ndOrder[state];
-            const totalTransitions = transitions.reduce((a, b) => a + b, 0);
-            
-            if (totalTransitions > 0) {
-                const smoothedTransitions = transitions.map(t => t + 1);
-                const smoothedTotal = smoothedTransitions.reduce((a, b) => a + b, 0);
-                const over5Transitions = smoothedTransitions.slice(6, 10).reduce((a, b) => a + b, 0);
-                prediction = (over5Transitions / smoothedTotal) * 100;
-                return prediction;
-            }
-        }
-    }
-    
-    if (digitHistory.length >= 1 && markovTransitionMatrix[digitHistory[0]]) {
-        const transitions = markovTransitionMatrix[digitHistory[0]];
-        const totalTransitions = transitions.reduce((a, b) => a + b, 0);
-        
-        if (totalTransitions > 0) {
-            const smoothedTransitions = transitions.map(t => t + 1);
-            const smoothedTotal = smoothedTransitions.reduce((a, b) => a + b, 0);
-            const over5Transitions = smoothedTransitions.slice(6, 10).reduce((a, b) => a + b, 0);
-            prediction = (over5Transitions / smoothedTotal) * 100;
-        }
-    }
-    
-    return prediction;
-}
-
-function detectPatterns() {
-    if (digitHistory.length < 10) return null;
-    
-    patternDecayTimer++;
-    
-    if (patternDecayTimer >= 100) {
-        patternDecayTimer = 0;
-        for (const key in patternCache) {
-            if (patternCache[key].count > 0) {
-                patternCache[key].count = Math.floor(patternCache[key].count * 0.5);
-                if (patternCache[key].count < 1) {
-                    delete patternCache[key];
-                }
-            }
-        }
-    }
-    
-    for (let len = 2; len <= Math.min(15, digitHistory.length); len++) {
-        const pattern = digitHistory.slice(0, len);
-        const patternStr = pattern.join(',');
-        const cacheKey = `pattern_${len}_${patternStr}`;
-        
-        if (patternCache[cacheKey]) {
-            patternCache[cacheKey].count++;
-            patternCache[cacheKey].lastSeen = Date.now();
-        } else {
-            patternCache[cacheKey] = { count: 1, lastSeen: Date.now() };
-        }
-        
-        for (let i = len; i <= digitHistory.length - len; i++) {
-            const comparePattern = digitHistory.slice(i, i + len);
-            const distance = levenshtein(pattern, comparePattern);
-            
-            const maxDistance = len <= 5 ? 1 : 2;
-            
-            if (distance <= maxDistance) {
-                if (i + len < digitHistory.length) {
-                    const nextDigit = digitHistory[i + len];
-                    const confidence = Math.min(95, 50 + (len * 4) + (patternCache[cacheKey]?.count || 0) * 2);
-                    
-                    return {
-                        pattern: patternStr,
-                        nextDigit: nextDigit,
-                        confidence: confidence,
-                        fuzzy: distance > 0,
-                        distance: distance
-                    };
-                }
-            }
-        }
-    }
-    
-    return null;
-}
-
-function calculateAdaptiveThreshold() {
-    if (recentWinRates.length < 5) return 0;
-    
-    const recentAvg = recentWinRates.slice(-10).reduce((a, b) => a + b, 0) / Math.min(10, recentWinRates.length);
-    
-    if (recentAvg < 0.40) {
-        return 15;
-    } else if (recentAvg < 0.45) {
-        return 10;
-    } else if (recentAvg > 0.65) {
-        return -8;
-    } else if (recentAvg > 0.60) {
-        return -5;
-    }
-    return 0;
-}
-
-async function calculateEnsemblePrediction(heuristicConf, bayesianProb, markovProb, volatility) {
-    const psfProb = calculatePSFPrediction();
-    const lstmProb = await calculateLSTMPrediction();
-    
-    let weights = {
-        heuristic: 0.20,
-        bayesian: 0.20,
-        markov: 0.20,
-        psf: 0.20,
-        lstm: 0.20
-    };
-    
-    const totalAccuracy = modelAccuracies.heuristic + modelAccuracies.bayesian + 
-                          modelAccuracies.markov + modelAccuracies.psf + modelAccuracies.lstm;
-    
-    if (totalAccuracy > 0) {
-        const heuristicWeight = (modelAccuracies.heuristic / totalAccuracy) * 0.7;
-        const bayesianWeight = (modelAccuracies.bayesian / totalAccuracy) * 0.7;
-        const markovWeight = (modelAccuracies.markov / totalAccuracy) * 0.7;
-        const psfWeight = (modelAccuracies.psf / totalAccuracy) * 0.7;
-        const lstmWeight = (modelAccuracies.lstm / totalAccuracy) * 0.7;
-        
-        weights.heuristic = 0.15 + heuristicWeight * 0.15;
-        weights.bayesian = 0.15 + bayesianWeight * 0.15;
-        weights.markov = 0.15 + markovWeight * 0.15;
-        weights.psf = 0.15 + psfWeight * 0.2;
-        weights.lstm = 0.15 + lstmWeight * 0.25;
-    }
-    
-    if (volatility > 3.0) {
-        weights.bayesian += 0.10;
-        weights.lstm += 0.10;
-        weights.heuristic -= 0.10;
-        weights.psf -= 0.05;
-        weights.markov -= 0.05;
-    } else if (volatility > 2.5) {
-        weights.bayesian += 0.05;
-        weights.lstm += 0.05;
-        weights.heuristic -= 0.05;
-        weights.psf -= 0.03;
-        weights.markov -= 0.02;
-    }
-    
-    const pattern = detectPatterns();
-    let patternBonus = 0;
-    if (pattern) {
-        patternBonus = pattern.fuzzy ? 3 : 5;
-        if (pattern.confidence > 70) patternBonus += 5;
-    }
-    
-    const ensemble = (
-        heuristicConf * weights.heuristic +
-        bayesianProb * weights.bayesian +
-        markovProb * weights.markov +
-        psfProb * weights.psf +
-        lstmProb * weights.lstm +
-        patternBonus
-    );
-    
-    return Math.min(98, Math.max(0, ensemble));
-}
-
-function updateModelAccuracies(actualResult) {
-    const isOver5 = actualResult > 5;
-    
-    if (modelPredictions.heuristic.length > 0) {
-        const lastHeuristic = modelPredictions.heuristic[modelPredictions.heuristic.length - 1];
-        const heuristicCorrect = (lastHeuristic.prediction === 'OVER' && isOver5) || 
-                                  (lastHeuristic.prediction === 'UNDER' && !isOver5);
-        
-        modelPredictions.heuristic.push({ correct: heuristicCorrect });
-        if (modelPredictions.heuristic.length > 50) modelPredictions.heuristic.shift();
-        
-        const correctCount = modelPredictions.heuristic.filter(p => p.correct).length;
-        modelAccuracies.heuristic = (correctCount / modelPredictions.heuristic.length) * 100;
-    }
-    
-    if (modelPredictions.bayesian.length > 0) {
-        const lastBayesian = modelPredictions.bayesian[modelPredictions.bayesian.length - 1];
-        const bayesianCorrect = (lastBayesian.prediction > 50 && isOver5) || 
-                                 (lastBayesian.prediction <= 50 && !isOver5);
-        
-        modelPredictions.bayesian.push({ correct: bayesianCorrect });
-        if (modelPredictions.bayesian.length > 50) modelPredictions.bayesian.shift();
-        
-        const correctCount = modelPredictions.bayesian.filter(p => p.correct).length;
-        modelAccuracies.bayesian = (correctCount / modelPredictions.bayesian.length) * 100;
-    }
-    
-    if (modelPredictions.markov.length > 0) {
-        const lastMarkov = modelPredictions.markov[modelPredictions.markov.length - 1];
-        const markovCorrect = (lastMarkov.prediction > 50 && isOver5) || 
-                               (lastMarkov.prediction <= 50 && !isOver5);
-        
-        modelPredictions.markov.push({ correct: markovCorrect });
-        if (modelPredictions.markov.length > 50) modelPredictions.markov.shift();
-        
-        const correctCount = modelPredictions.markov.filter(p => p.correct).length;
-        modelAccuracies.markov = (correctCount / modelPredictions.markov.length) * 100;
-    }
-    
-    if (modelPredictions.psf.length > 0) {
-        const lastPSF = modelPredictions.psf[modelPredictions.psf.length - 1];
-        const psfCorrect = (lastPSF.prediction > 50 && isOver5) || 
-                            (lastPSF.prediction <= 50 && !isOver5);
-        
-        modelPredictions.psf.push({ correct: psfCorrect });
-        if (modelPredictions.psf.length > 50) modelPredictions.psf.shift();
-        
-        const correctCount = modelPredictions.psf.filter(p => p.correct).length;
-        modelAccuracies.psf = (correctCount / modelPredictions.psf.length) * 100;
-    }
-    
-    if (modelPredictions.lstm.length > 0) {
-        const lastLSTM = modelPredictions.lstm[modelPredictions.lstm.length - 1];
-        const lstmCorrect = (lastLSTM.prediction > 50 && isOver5) || 
-                             (lastLSTM.prediction <= 50 && !isOver5);
-        
-        modelPredictions.lstm.push({ correct: lstmCorrect });
-        if (modelPredictions.lstm.length > 50) modelPredictions.lstm.shift();
-        
-        const correctCount = modelPredictions.lstm.filter(p => p.correct).length;
-        modelAccuracies.lstm = (correctCount / modelPredictions.lstm.length) * 100;
-    }
-    
-    updateModelPerformanceUI();
-}
-
-function updateModelPerformanceUI() {
-    const heuristicEl = document.getElementById('heuristicPerf');
-    const bayesianEl = document.getElementById('bayesianPerf');
-    const markovEl = document.getElementById('markovPerf');
-    const psfEl = document.getElementById('psfPerf');
-    
-    if (modelAccuracies.heuristic > 0) {
-        heuristicEl.innerHTML = `<span style="opacity:0.6">Heuristic</span><b style="color:#22c55e">${modelAccuracies.heuristic.toFixed(0)}%</b>`;
-        heuristicEl.className = modelAccuracies.heuristic >= 55 ? 'model-perf-high' : (modelAccuracies.heuristic < 45 ? 'model-perf-low' : '');
-    }
-    
-    if (modelAccuracies.bayesian > 0) {
-        bayesianEl.innerHTML = `<span style="opacity:0.6">Bayesian</span><b style="color:#8b5cf6">${modelAccuracies.bayesian.toFixed(0)}%</b>`;
-        bayesianEl.className = modelAccuracies.bayesian >= 55 ? 'model-perf-high' : (modelAccuracies.bayesian < 45 ? 'model-perf-low' : '');
-    }
-    
-    if (modelAccuracies.markov > 0) {
-        markovEl.innerHTML = `<span style="opacity:0.6">Markov</span><b style="color:#3b82f6">${modelAccuracies.markov.toFixed(0)}%</b>`;
-        markovEl.className = modelAccuracies.markov >= 55 ? 'model-perf-high' : (modelAccuracies.markov < 45 ? 'model-perf-low' : '');
-    }
-    
-    if (modelAccuracies.psf > 0) {
-        psfEl.innerHTML = `<span style="opacity:0.6">PSF</span><b style="color:#f59e0b">${modelAccuracies.psf.toFixed(0)}%</b>`;
-        psfEl.className = modelAccuracies.psf >= 55 ? 'model-perf-high' : (modelAccuracies.psf < 45 ? 'model-perf-low' : '');
-    }
-}
-
-// ============ DIGIT ANALYZER ============
-function addDigitToAnalyzer(digit) {
-  digit = smoothOutliers(digit, digitHistory);
-  
-  digitHistory.unshift(digit);
-  if (digitHistory.length > 50) digitHistory.pop();
-  
-  extendedHistory.unshift(digit);
-  if (extendedHistory.length > 5000) extendedHistory.pop();
-  
-  if (extendedHistory.length % 100 === 0) {
-    localStorage.setItem('extended_history_v10', JSON.stringify(extendedHistory));
-  }
-  
-  const isOver5 = digit > 5;
-  updateBayesianModel(isOver5);
-  updateMarkovModel(digit);
-  
-  if (digitHistory.length > 1) {
-    updateModelAccuracies(digit);
-  }
-  
-  volatilityWindow.unshift(digit);
-  if (volatilityWindow.length > 100) volatilityWindow.pop();
-  
-  updatePSFPeriodically();
-  
-  if (!lstmInitialized && extendedHistory.length >= 100 && isAutoRunning) {
-    initializeLSTM();
-  }
-  
-  updateAnalyzerDisplay();
-  if (isAutoRunning && !isCycleCooldown) checkAndAutoTrade();
-}
-
-function checkAndAutoTrade() {
-    if (currentContractId !== null) return;
-    
-    if (currentConfidenceMode === 'pattern') {
+    function sendAPIRequest(data) { 
+      if (ws && ws.readyState === WebSocket.OPEN) { 
         const now = Date.now();
-        const cooldownMs = parseInt(document.getElementById('cooldown').value) * 1000;
-        if (now - lastTradeTime < Math.max(cooldownMs, 1000)) return;
-        
-        if (detectedPattern && detectedPattern.nextDigit !== null && detectedPattern.nextDigit !== undefined) {
-            const targetDigits = [
-                parseInt(document.getElementById('pattern1').value),
-                parseInt(document.getElementById('pattern2').value),
-                parseInt(document.getElementById('pattern3').value),
-                parseInt(document.getElementById('pattern4').value),
-                parseInt(document.getElementById('pattern5').value)
-            ];
-            
-            if (targetDigits.includes(detectedPattern.nextDigit)) {
-                const maxNextLikely = parseInt(document.getElementById('patternEnsembleMax').value) || 0;
-                const minNextLikely = parseInt(document.getElementById('patternEnsembleMin').value) || 0;
-                const currentNextLikely = Math.round(detectedPattern.confidence);
-                
-                let activeFilters = 0;
-                if (maxNextLikely > 0) activeFilters++;
-                if (minNextLikely > 0) activeFilters++;
-                if (isSpecificEnsembleActive) activeFilters++;
-                
-                if (activeFilters > 1) {
-                    addLog(`Pattern Match! But CONFLICT: Multiple filters active (${activeFilters}). Only ONE allowed!`, "error");
-                    return;
-                }
-                
-                if (activeFilters === 0) {
-                    addLog(`Pattern Match! Next Likely: ${detectedPattern.nextDigit} (${currentNextLikely}%) | All Filters: DISABLED - Trading NOW!`, "success");
-                    lastTradeTime = now;
-                    placeTrade();
-                    return;
-                }
-                
-                if (maxNextLikely > 0) {
-                    if (currentNextLikely <= maxNextLikely) {
-                        addLog(`Pattern Match! Next Likely: ${detectedPattern.nextDigit} (${currentNextLikely}%) ≤ ${maxNextLikely}% ✓ - Trading NOW!`, "success");
-                        lastTradeTime = now;
-                        placeTrade();
-                    } else {
-                        addLog(`Pattern Match! Next Likely: ${detectedPattern.nextDigit} (${currentNextLikely}%) > ${maxNextLikely}% ✗ - SKIPPED (too high)`, "warn");
-                    }
-                    return;
-                }
-                
-                if (minNextLikely > 0) {
-                    if (currentNextLikely >= minNextLikely) {
-                        addLog(`Pattern Match! Next Likely: ${detectedPattern.nextDigit} (${currentNextLikely}%) ≥ ${minNextLikely}% ✓ - Trading NOW!`, "success");
-                        lastTradeTime = now;
-                        placeTrade();
-                    } else {
-                        addLog(`Pattern Match! Next Likely: ${detectedPattern.nextDigit} (${currentNextLikely}%) < ${minNextLikely}% ✗ - SKIPPED (too low)`, "warn");
-                    }
-                    return;
-                }
-                
-                if (isSpecificEnsembleActive) {
-                    const specificTargets = [
-                        parseInt(document.getElementById('specEns1').value),
-                        parseInt(document.getElementById('specEns2').value),
-                        parseInt(document.getElementById('specEns3').value),
-                        parseInt(document.getElementById('specEns4').value),
-                        parseInt(document.getElementById('specEns5').value)
-                    ].filter(v => !isNaN(v) && v >= 0 && v <= 100);
-                    
-                    if (specificTargets.includes(currentNextLikely)) {
-                        addLog(`Pattern Match! Next Likely: ${detectedPattern.nextDigit} (${currentNextLikely}%) = Target ✓ - Trading NOW!`, "success");
-                        lastTradeTime = now;
-                        placeTrade();
-                    } else {
-                        addLog(`Pattern Match! Next Likely: ${detectedPattern.nextDigit} (${currentNextLikely}%) ≠ Targets [${specificTargets.join(',')}] ✗ - SKIPPED`, "warn");
-                    }
-                    return;
-                }
-            }
-        }
-        return;
-    }
-    
-    if (!isSignalWindowOpen) return;
-
-    const now = Date.now();
-    const cooldownMs = parseInt(document.getElementById('cooldown').value) * 1000;
-    if (now - lastTradeTime < Math.max(cooldownMs, 1000)) return;
-
-    const mode = currentConfidenceMode;
-    let isConfidenceMet = false;
-    const currentConf = Math.round(lastPredictionConfidence);
-    const prevConf = Math.round(previousPredictionConfidence);
-
-    if (mode === 'range') {
-        let minConf = parseFloat(document.getElementById('minConfidence').value);
-        let maxConf = parseFloat(document.getElementById('maxConfidence').value);
-        
-        const adjustment = calculateAdaptiveThreshold();
-        minConf += adjustment;
-        
-        if (currentConf >= minConf && currentConf <= maxConf) isConfidenceMet = true;
-    } 
-    else if (mode === 'specific') {
-        const targets = [
-            parseInt(document.getElementById('spec1').value),
-            parseInt(document.getElementById('spec2').value),
-            parseInt(document.getElementById('spec3').value),
-            parseInt(document.getElementById('spec4').value),
-            parseInt(document.getElementById('spec5').value)
-        ];
-        if (targets.includes(currentConf)) isConfidenceMet = true;
-    }
-    else if (mode === 'sequence') {
-        const s1_p1 = parseInt(document.getElementById('s1_p1_min').value);
-        const s1_p2_min = parseInt(document.getElementById('s1_p2_min').value);
-        const s1_p2_max = parseInt(document.getElementById('s1_p2_max').value);
-        
-        const s2_p1 = parseInt(document.getElementById('s2_p1_min').value);
-        const s2_p2_min = parseInt(document.getElementById('s2_p2_min').value);
-        const s2_p2_max = parseInt(document.getElementById('s2_p2_max').value);
-
-        const s3_p1 = parseInt(document.getElementById('s3_p1_min').value);
-        const s3_p2_min = parseInt(document.getElementById('s3_p2_min').value);
-        const s3_p2_max = parseInt(document.getElementById('s3_p2_max').value);
-
-        const match1 = (prevConf >= s1_p1 && currentConf >= s1_p2_min && currentConf <= s1_p2_max);
-        const match2 = (prevConf >= s2_p1 && currentConf >= s2_p2_min && currentConf <= s2_p2_max);
-        const match3 = (prevConf >= s3_p1 && currentConf >= s3_p2_min && currentConf <= s3_p2_max);
-
-        if (match1 || match2 || match3) isConfidenceMet = true;
-    }
-
-    if (lastPredictionType === 'OVER 5' && isConfidenceMet) {
-        lastTradeTime = now;
-        placeTrade();
-    }
-}
-
-function updateAnalyzerDisplay() {
-  const container = document.getElementById('digitDisplay');
-  container.innerHTML = '';
-  digitHistory.forEach(digit => {
-    const box = document.createElement('div');
-    box.className = 'digit-box ' + (digit > 5 ? 'digit-over' : 'digit-under');
-    box.textContent = digit;
-    container.appendChild(box);
-  });
-  
-  const overCount = digitHistory.filter(d => d > 5).length;
-  document.getElementById('overCount').textContent = overCount;
-  document.getElementById('totalCount').textContent = digitHistory.length;
-  document.getElementById('overPercent').textContent = (digitHistory.length > 0 ? ((overCount / digitHistory.length) * 100).toFixed(1) : 0) + '%';
-  
-  predictNextDigit();
-}
-
-async function predictNextDigit() {
-  if (digitHistory.length < 20) {
-    document.getElementById('patternMatch').textContent = 'Collecting data... need 20+ ticks';
-    detectedPattern = null;
-    return;
-  }
-  
-  previousPredictionConfidence = lastPredictionConfidence;
-
-  const last20 = digitHistory.slice(0, 20);
-  let weightedUnderScore = 0;
-  last20.forEach((digit, index) => {
-      const weight = (20 - index) / 20; 
-      if (digit <= 5) weightedUnderScore += weight;
-  });
-  const weightedFreq = (weightedUnderScore / 10.5) * 100;
-  
-  let overGap = 0;
-  for (let d of digitHistory) {
-      if (d <= 5) overGap++;
-      else break;
-  }
-  
-  const volatility = calculateVolatility(volatilityWindow, 50);
-  let volatilityLabel = 'Low';
-  let volatilityPenalty = 0;
-  
-  if (volatility > 3.0) {
-      volatilityLabel = 'Extreme';
-      volatilityPenalty = -20;
-  } else if (volatility > 2.5) {
-      volatilityLabel = 'High';
-      volatilityPenalty = -15;
-  } else if (volatility > 1.8) {
-      volatilityLabel = 'Medium';
-      volatilityPenalty = -5;
-  }
-  
-  document.getElementById('volatilityScore').textContent = volatilityLabel;
-  
-  let gravityBonus = 0;
-  if (digitHistory.length >= 3) {
-      if (digitHistory[0] > digitHistory[1] && digitHistory[1] > digitHistory[2]) {
-          gravityBonus = 15;
-      } else if (digitHistory[0] < digitHistory[1] && digitHistory[1] < digitHistory[2]) {
-          gravityBonus = -10;
-      }
-  }
-  
-  const bayesianProb = updateBayesianModel(digitHistory[0] > 5);
-  document.getElementById('bayesianProb').textContent = bayesianProb.toFixed(0) + '%';
-  
-  const markovProb = calculateMarkovPrediction();
-  document.getElementById('markovProb').textContent = markovProb.toFixed(0) + '%';
-  
-  const psfProb = calculatePSFPrediction();
-  document.getElementById('psfScore').textContent = psfProb.toFixed(0) + '%';
-  
-  const lstmProb = await calculateLSTMPrediction();
-  document.getElementById('lstmPred').textContent = lstmProb.toFixed(0) + '%';
-  
-  let heuristicConf = 0;
-  let predText = 'WAIT';
-  
-  if (overGap >= 3) {
-      predText = 'OVER 5';
-      heuristicConf = 40 + (overGap * 9) + (weightedFreq * 0.1) + gravityBonus + volatilityPenalty;
-  } else if (weightedFreq > 70) {
-      predText = 'OVER 5';
-      heuristicConf = 45 + (weightedFreq - 70) + gravityBonus + volatilityPenalty;
-  }
-  
-  modelPredictions.heuristic.push({ prediction: predText });
-  modelPredictions.bayesian.push({ prediction: bayesianProb });
-  modelPredictions.markov.push({ prediction: markovProb });
-  
-  const ensembleScore = await calculateEnsemblePrediction(
-      Math.max(0, heuristicConf), 
-      bayesianProb, 
-      markovProb, 
-      volatility
-  );
-  
-  document.getElementById('ensembleScore').textContent = ensembleScore.toFixed(0) + '%';
-  
-  lastPredictionConfidence = Math.min(98, Math.max(0, ensembleScore));
-  lastPredictionType = predText;
-  
-  const confAdj = calculateAdaptiveThreshold();
-  document.getElementById('confAdj').textContent = (confAdj >= 0 ? '+' : '') + confAdj + '%';
-  
-  document.getElementById('nextDigitPrediction').textContent = predText;
-  document.getElementById('nextDigitPrediction').style.color = predText === 'OVER 5' ? '#22c55e' : '#f59e0b';
-  document.getElementById('predictionConfidence').textContent = `${lastPredictionConfidence.toFixed(0)}% (Ensemble v3 Optimized)`;
-  document.getElementById('freqScore').textContent = weightedFreq.toFixed(0) + '%';
-  document.getElementById('cycleScore').textContent = overGap;
-  
-  const pattern = detectPatterns();
-  detectedPattern = pattern;
-  
-  if (pattern) {
-      const fuzzyText = pattern.fuzzy ? ` (fuzzy, dist=${pattern.distance})` : '';
-      document.getElementById('patternMatch').textContent = `Pattern detected: [${pattern.pattern}]${fuzzyText} → Next likely: ${pattern.nextDigit} (${pattern.confidence}%)`;
-  } else {
-      document.getElementById('patternMatch').textContent = `No repeating patterns found. Using ML ensemble (PSF + LSTM + Bayesian + Markov).`;
-  }
-}
-
-// ============ TRADING FUNCTIONS ============
-function placeTrade() {
-  if (!isConnected || isCycleCooldown) return;
-  
-  const stakeValue = parseFloat(document.getElementById('stake').value);
-  const tickValue = parseInt(document.getElementById('duration').value);
-  const marketValue = currentMarketValue;
-  const type = isReverseTradeActive ? 'DIGITUNDER' : 'DIGITOVER';
-  
-  if (isCurrentlyVirtualMode()) {
-      addLog(`🎮 VIRTUAL TRADE SIMULATED (Not placing real trade)`, "warn");
-      
-      setTimeout(() => {
-          const simulatedWin = Math.random() > 0.5;
-          const simulatedProfit = simulatedWin ? stakeValue * 0.95 : -stakeValue;
-          
-          handleVirtualTradeResult(simulatedWin);
-          
-          stats.trades++;
-          if (simulatedWin) stats.wins++; else stats.losses++;
-          stats.profit += simulatedProfit;
-          
-          recentWinRates.push(simulatedWin ? 1 : 0);
-          if (recentWinRates.length > 20) recentWinRates.shift();
-          
-          updateStats();
-          addToHistory(stats.trades, simulatedWin ? 'Win (Virtual)' : 'Loss (Virtual)', simulatedProfit, marketValue);
-          
-          addLog(`🎮 VIRTUAL ${simulatedWin ? 'WIN' : 'LOSS'} | P/L: ${simulatedProfit.toFixed(2)}`, simulatedWin ? 'success' : 'error');
-          
-          localStorage.setItem('trade_stats_v10', JSON.stringify(stats));
-          localStorage.setItem('trade_history_v10', document.getElementById('history').innerHTML);
-          
-          checkRiskManagement();
-      }, 2000);
-      
-      return;
-  }
-  
-  let confidenceMsg = '';
-  if (currentConfidenceMode === 'pattern' && detectedPattern) {
-      const maxNextLikely = parseInt(document.getElementById('patternEnsembleMax').value) || 0;
-      const minNextLikely = parseInt(document.getElementById('patternEnsembleMin').value) || 0;
-      const nextLikelyPercent = Math.round(detectedPattern.confidence);
-      
-      if (maxNextLikely === 0 && minNextLikely === 0 && !isSpecificEnsembleActive) {
-          confidenceMsg = `Pattern: [${detectedPattern.pattern}] → ${detectedPattern.nextDigit} (${nextLikelyPercent}%) | Filters: OFF`;
-      } else if (maxNextLikely > 0) {
-          confidenceMsg = `Pattern: [${detectedPattern.pattern}] → ${detectedPattern.nextDigit} | Next Likely: ${nextLikelyPercent}% ≤ ${maxNextLikely}%`;
-      } else if (minNextLikely > 0) {
-          confidenceMsg = `Pattern: [${detectedPattern.pattern}] → ${detectedPattern.nextDigit} | Next Likely: ${nextLikelyPercent}% ≥ ${minNextLikely}%`;
-      } else if (isSpecificEnsembleActive) {
-          confidenceMsg = `Pattern: [${detectedPattern.pattern}] → ${detectedPattern.nextDigit} | Next Likely: ${nextLikelyPercent}% = Target`;
-      }
-  } else {
-      confidenceMsg = `${lastPredictionConfidence.toFixed(0)}% confidence (PSF+LSTM Ensemble)`;
-  }
-  
-  addLog(`🔴 LIVE: Executing ${type} trade with ${confidenceMsg}`, "info");
-  
-  sendAPIRequest({
-    buy: 1, 
-    price: stakeValue,
-    parameters: { 
-        contract_type: type, 
-        symbol: marketValue, 
-        duration: tickValue, 
-        duration_unit: 't', 
-        barrier: '5', 
-        amount: stakeValue,
-        basis: 'stake', 
-        currency: 'USD' 
-    }
-  });
-}
-
-function toggleAuto() {
-  if (!isConnected) return;
-  isAutoRunning = !isAutoRunning;
-  const btn = document.getElementById('autoBtn');
-  const shutdownUI = document.getElementById('shutdownDisplay');
-
-  if (isAutoRunning) {
-    autoStartTime = Date.now();
-    localStorage.setItem('isAutoRunning', 'true');
-    localStorage.setItem('autoStartTime', autoStartTime);
-    shutdownUI.style.display = 'block';
-    addLog("ML Auto-Trade v3 Enabled (PSF + LSTM Optimized).", "success");
-    btn.textContent = 'Stop Auto'; 
-    btn.style.background = '#ef4444';
-    
-    if (!lstmInitialized && extendedHistory.length >= 100) {
-        initializeLSTM();
-    }
-    
-    if (extendedHistory.length >= 50) {
-        buildPSFPatterns();
-    }
-  } else {
-    autoStartTime = null;
-    localStorage.removeItem('isAutoRunning');
-    localStorage.removeItem('autoStartTime');
-    shutdownUI.style.display = 'none';
-    addLog("Auto-Trade Stopped.", "warn");
-    btn.textContent = 'Start Auto'; 
-    btn.style.background = '#22c55e';
-  }
-}
-
-function toggleMarketCycle() {
-    isMarketCycleActive = !isMarketCycleActive;
-    const btn = document.getElementById('cycleBtn');
-    if (isMarketCycleActive) {
-        btn.classList.add('active');
-        currentMarketIndex = marketSequence.indexOf(currentMarketValue);
-        if(currentMarketIndex === -1) currentMarketIndex = 0;
-        btn.textContent = `Auto Market Cycle: ON (${marketSequence[currentMarketIndex]})`;
-        addLog(`Market Cycle Sequence Started at ${marketSequence[currentMarketIndex]}.`, "info");
-    } else {
-        btn.classList.remove('active');
-        btn.textContent = "Auto Market Cycle: OFF";
-        addLog(`Market Cycle Sequence Disabled.`, "warn");
-    }
-}
-
-function toggleCooldownLoop() {
-    isCooldownLoopActive = !isCooldownLoopActive;
-    const btn = document.getElementById('cooldownBtn');
-    if (isCooldownLoopActive) {
-        btn.classList.add('active');
-        btn.textContent = "Cycle Cooldown Loop: ON";
-        addLog(`Cycle Cooldown Loop Enabled: Will wait after full sequence.`, "info");
-    } else {
-        btn.classList.remove('active');
-        btn.textContent = "Cycle Cooldown Loop: OFF";
-        addLog(`Cycle Cooldown Loop Disabled.`, "warn");
-    }
-}
-
-function startCycleCooldown() {
-    isCycleCooldown = true;
-    let waitMinutes = parseInt(document.getElementById('cycleWaitTime').value);
-    let secondsLeft = waitMinutes * 60;
-    const timerDisplay = document.getElementById('cycleTimerDisplay');
-    timerDisplay.style.display = 'block';
-    addLog(`Sequence Complete. Cycle Cooldown Loop active: waiting ${waitMinutes}m...`, "warn");
-
-    if (cycleTimerId) clearInterval(cycleTimerId);
-    cycleTimerId = setInterval(() => {
-        secondsLeft--;
-        const mins = Math.floor(secondsLeft / 60);
-        const secs = secondsLeft % 60;
-        timerDisplay.textContent = `Next Loop in: ${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
-
-        if (secondsLeft <= 0) {
-            clearInterval(cycleTimerId);
-            isCycleCooldown = false;
-            timerDisplay.style.display = 'none';
-            currentMarketIndex = 0;
-            const nextMarket = marketSequence[currentMarketIndex];
-            currentMarketValue = nextMarket;
-            selectMarket(nextMarket);
-            document.getElementById('cycleBtn').textContent = `Auto Market Cycle: ON (${nextMarket})`;
-            addLog(`Cooldown finished. Restarting Cycle at ${nextMarket}.`, "success");
-            subscribeToTicks();
-        }
-    }, 1000);
-}
-
-function handleTradeResult(contract) {
-  const isWin = contract.status === 'won';
-  const profitLoss = parseFloat(contract.profit || 0);
-  
-  const tradeMode = isCurrentlyVirtualMode() ? "VIRTUAL" : "LIVE";
-  addLog(`${tradeMode} RESULT: ${isWin ? 'WIN' : 'LOSS'} | P/L: ${profitLoss.toFixed(2)}`, isWin ? 'success' : 'error');
-  
-  handleVirtualTradeResult(isWin);
-  
-  stats.trades++; 
-  if (isWin) stats.wins++; else stats.losses++; 
-  stats.profit += profitLoss;
-  
-  recentWinRates.push(isWin ? 1 : 0);
-  if (recentWinRates.length > 20) recentWinRates.shift();
-  
-  updateStats();
-  
-  const historyLabel = isCurrentlyVirtualMode() ? `${isWin ? 'Win' : 'Loss'} (Virtual)` : (isWin ? 'Win' : 'Loss');
-  addToHistory(stats.trades, historyLabel, profitLoss, contract.display_name || 'Market');
-  localStorage.setItem('trade_stats_v10', JSON.stringify(stats));
-  localStorage.setItem('trade_history_v10', document.getElementById('history').innerHTML);
-
-  const tp = parseFloat(document.getElementById('takeprofit').value);
-  if (isMarketCycleActive && stats.profit >= tp) {
-      if (currentMarketIndex < marketSequence.length - 1) {
-          currentMarketIndex++;
-          const nextMarket = marketSequence[currentMarketIndex];
-          addLog(`Target reached! Switching Market: ${marketSequence[currentMarketIndex-1]} -> ${nextMarket}...`, "success");
-          resetStats(); 
-          currentMarketValue = nextMarket;
-          selectMarket(nextMarket);
-          document.getElementById('cycleBtn').textContent = `Auto Market Cycle: ON (${nextMarket})`;
-          subscribeToTicks();
-          return; 
-      } else {
-          addLog("Final Market Sequence Finished Successfully.", "success");
-          resetStats();
-          if (isCooldownLoopActive) {
-              startCycleCooldown();
-          } else {
-              if (isAutoRunning) toggleAuto();
-              isMarketCycleActive = false;
-              document.getElementById('cycleBtn').classList.remove('active');
-              document.getElementById('cycleBtn').textContent = "Auto Market Cycle: OFF";
-          }
-      }
-  }
-  checkRiskManagement();
-}
-
-function toggleReverseTrade() {
-    isReverseTradeActive = !isReverseTradeActive;
-    const btn = document.getElementById('reverseBtn');
-    if (isReverseTradeActive) {
-        btn.classList.add('active');
-        btn.textContent = "Reverse Trade: ON (Digit Under 5)";
-        addLog("Reverse Mode Activated: Now trading Digit Under 5", "warn");
-    } else {
-        btn.classList.remove('active');
-        btn.textContent = "Reverse Trade: OFF";
-        addLog("Normal Mode Activated: Now trading Digit Over 5", "info");
-    }
-}
-
-// ============ API COMMUNICATION ============
-function sendAPIRequest(data) { 
-    if (ws && ws.readyState === WebSocket.OPEN) { 
-        const now = Date.now();
-        if (now - lastRequestTime < 300) {
-            setTimeout(() => sendAPIRequest(data), 300);
-            return false;
+        if (now - lastRequestTime < 100) { 
+          setTimeout(() => sendAPIRequest(data), 100);
+          return false;
         }
         lastRequestTime = now;
         ws.send(JSON.stringify(data)); 
         return true; 
-    } 
-    return false; 
-}
+      } 
+      return false; 
+    }
+    
+    function subscribeToTicks() {
+      const market = Config.currentMarketValue;
+      sendAPIRequest({ forget_all: "ticks" });
+      App.modules.Analyzer.resetForNewMarket();
+      document.getElementById('digitDisplay').innerHTML = '';
+      App.modules.UI.addLog(`Watching ${market}...`, "info");
+      sendAPIRequest({ ticks: market, subscribe: 1 });
+    }
+    
+    return {
+      init() {
+        document.getElementById('loginBtn').addEventListener('click', connect);
+        document.getElementById('logoutBtn').addEventListener('click', () => { 
+          isExplicitLogout = true; 
+          localStorage.removeItem('isAutoRunning');
+          if (ws) ws.close(); 
+          sessionStorage.removeItem('derivToken'); 
+          App.modules.UI.addLog("Logging out...", "info");
+          setTimeout(() => location.reload(), 500);
+        });
+      },
+      connect,
+      subscribeToTicks,
+      sendAPIRequest,
+      isConnected: () => isConnected
+    };
+  })();
 
-function subscribeToTicks() {
-  const market = currentMarketValue;
-  sendAPIRequest({ forget_all: "ticks" });
-  digitHistory = [];
-  document.getElementById('digitDisplay').innerHTML = '';
-  addLog(`Watching ${market}...`, "info");
-  sendAPIRequest({ ticks: market, subscribe: 1 });
-}
+  // ============ ADVANCED ANALYZER MODULE (HIGHER-ORDER MARKOV CHAINS) ============
+  App.modules.Analyzer = (function() {
+    let digitHistory = [];
+    let currentOrder = 1; // 1, 2, or 3
+    
+    // Order 1: Standard transition matrix
+    let transitionMatrix1 = Array(10).fill(0).map(() => Array(10).fill(0));
+    let totalTransitions1 = Array(10).fill(0);
+    
+    // Order 2: 2-digit sequence tracking
+    let transitionMatrix2 = {}; // Key: "d1,d2" -> Value: Array(10) for next digit counts
+    let totalTransitions2 = {}; // Key: "d1,d2" -> Total count
+    
+    // Order 3: 3-digit sequence tracking
+    let transitionMatrix3 = {}; // Key: "d1,d2,d3" -> Value: Array(10) for next digit counts
+    let totalTransitions3 = {}; // Key: "d1,d2,d3" -> Total count
+    
+    let predictedDigit = null;
+    let predictionConfidence = 0;
+    let lastDigit = null;
+    
+    // Laplace smoothing parameter
+    const SMOOTHING_ALPHA = 0.1;
+    
+    function processTick(digit) {
+      lastDigit = digit;
+      
+      // 1. Update History
+      digitHistory.unshift(digit);
+      if (digitHistory.length > 1000) digitHistory.pop();
+      
+      // 2. Update all order models
+      updateAllModels(digit);
+      
+      // 3. Calculate prediction based on current order
+      const duration = parseInt(document.getElementById('duration').value);
+      const steps = duration;
+      const internalPred = calculatePrediction(digit, steps);
+      
+      // 4. Process virtual trade
+      App.modules.VirtualTrade.processTickResult(digit);
+      
+      // 5. Trade check
+      if (App.modules.Trader.getAutoRunning() && !App.modules.Trader.getCycleCooldown()) {
+        App.modules.Trader.checkAndAutoTrade(internalPred); 
+      }
+      
+      // 6. Update UI
+      updateDisplay();
+      updatePredictionUI(internalPred, digit);
+    }
+    
+    function updateAllModels(digit) {
+      const len = digitHistory.length;
+      
+      // Update Order 1
+      if (len > 1) {
+        const prev1 = digitHistory[1];
+        transitionMatrix1[prev1][digit]++;
+        totalTransitions1[prev1]++;
+      }
+      
+      // Update Order 2
+      if (len > 2) {
+        const prev1 = digitHistory[1];
+        const prev2 = digitHistory[2];
+        const key2 = `${prev2},${prev1}`;
+        
+        if (!transitionMatrix2[key2]) {
+          transitionMatrix2[key2] = Array(10).fill(0);
+          totalTransitions2[key2] = 0;
+        }
+        transitionMatrix2[key2][digit]++;
+        totalTransitions2[key2]++;
+      }
+      
+      // Update Order 3
+      if (len > 3) {
+        const prev1 = digitHistory[1];
+        const prev2 = digitHistory[2];
+        const prev3 = digitHistory[3];
+        const key3 = `${prev3},${prev2},${prev1}`;
+        
+        if (!transitionMatrix3[key3]) {
+          transitionMatrix3[key3] = Array(10).fill(0);
+          totalTransitions3[key3] = 0;
+        }
+        transitionMatrix3[key3][digit]++;
+        totalTransitions3[key3]++;
+      }
+    }
+    
+    function calculatePrediction(lastDigit, steps = 1) {
+      if (currentOrder === 1) {
+        return predictOrder1(lastDigit, steps);
+      } else if (currentOrder === 2) {
+        return predictOrder2(steps);
+      } else {
+        return predictOrder3(steps);
+      }
+    }
+    
+    function predictOrder1(lastDigit, steps) {
+      const total = totalTransitions1[lastDigit];
+      if (total < 15) return { digit: null, confidence: 0, current: total, required: 15 };
+      
+      // Build probability matrix with Laplace smoothing
+      const probMatrix = Array(10).fill().map(() => Array(10).fill(0));
+      for (let i = 0; i < 10; i++) {
+        const tot = totalTransitions1[i] || 0;
+        for (let j = 0; j < 10; j++) {
+          if (tot > 0) {
+            probMatrix[i][j] = (transitionMatrix1[i][j] + SMOOTHING_ALPHA) / (tot + 10 * SMOOTHING_ALPHA);
+          } else {
+            probMatrix[i][j] = 0.1;
+          }
+        }
+      }
+      
+      // Multi-step prediction
+      let currentProb = Array(10).fill(0);
+      for (let j = 0; j < 10; j++) {
+        currentProb[j] = probMatrix[lastDigit][j];
+      }
+      
+      for (let s = 1; s < steps; s++) {
+        let newProb = Array(10).fill(0);
+        for (let i = 0; i < 10; i++) {
+          for (let j = 0; j < 10; j++) {
+            newProb[j] += currentProb[i] * probMatrix[i][j];
+          }
+        }
+        currentProb = newProb;
+      }
+      
+      let bestDigit = 0;
+      let maxProb = currentProb[0];
+      for (let i = 1; i < 10; i++) {
+        if (currentProb[i] > maxProb) {
+          maxProb = currentProb[i];
+          bestDigit = i;
+        }
+      }
+      
+      return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 15 };
+    }
+    
+    function predictOrder2(steps) {
+      const len = digitHistory.length;
+      if (len < 2) return { digit: null, confidence: 0, current: 0, required: 10 };
+      
+      const prev1 = digitHistory[0];
+      const prev2 = digitHistory[1];
+      const key = `${prev2},${prev1}`;
+      
+      const total = totalTransitions2[key] || 0;
+      if (total < 10) {
+        // Fallback to Order 1
+        return predictOrder1(prev1, steps);
+      }
+      
+      // Get probabilities with smoothing
+      const counts = transitionMatrix2[key];
+      let probs = Array(10).fill(0);
+      for (let i = 0; i < 10; i++) {
+        probs[i] = (counts[i] + SMOOTHING_ALPHA) / (total + 10 * SMOOTHING_ALPHA);
+      }
+      
+      // For multi-step, we need to simulate state transitions
+      if (steps === 1) {
+        let bestDigit = 0;
+        let maxProb = probs[0];
+        for (let i = 1; i < 10; i++) {
+          if (probs[i] > maxProb) {
+            maxProb = probs[i];
+            bestDigit = i;
+          }
+        }
+        return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 10 };
+      } else {
+        // For steps > 1, blend with order-1 predictions
+        const order1Pred = predictOrder1(prev1, steps);
+        const blendFactor = 0.7; // 70% order-2, 30% order-1
+        
+        let bestDigit = 0;
+        let maxProb = probs[0] * blendFactor + (order1Pred.digit === 0 ? order1Pred.confidence / 100 * (1 - blendFactor) : 0);
+        
+        for (let i = 1; i < 10; i++) {
+          const combinedProb = probs[i] * blendFactor + (order1Pred.digit === i ? order1Pred.confidence / 100 * (1 - blendFactor) : 0);
+          if (combinedProb > maxProb) {
+            maxProb = combinedProb;
+            bestDigit = i;
+          }
+        }
+        
+        return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 10 };
+      }
+    }
+    
+    function predictOrder3(steps) {
+      const len = digitHistory.length;
+      if (len < 3) return { digit: null, confidence: 0, current: 0, required: 8 };
+      
+      const prev1 = digitHistory[0];
+      const prev2 = digitHistory[1];
+      const prev3 = digitHistory[2];
+      const key = `${prev3},${prev2},${prev1}`;
+      
+      const total = totalTransitions3[key] || 0;
+      if (total < 8) {
+        // Fallback to Order 2
+        return predictOrder2(steps);
+      }
+      
+      // Get probabilities with smoothing
+      const counts = transitionMatrix3[key];
+      let probs = Array(10).fill(0);
+      for (let i = 0; i < 10; i++) {
+        probs[i] = (counts[i] + SMOOTHING_ALPHA) / (total + 10 * SMOOTHING_ALPHA);
+      }
+      
+      if (steps === 1) {
+        let bestDigit = 0;
+        let maxProb = probs[0];
+        for (let i = 1; i < 10; i++) {
+          if (probs[i] > maxProb) {
+            maxProb = probs[i];
+            bestDigit = i;
+          }
+        }
+        return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 8 };
+      } else {
+        // Blend with lower orders for multi-step
+        const order2Pred = predictOrder2(steps);
+        const blendFactor = 0.6; // 60% order-3, 40% order-2
+        
+        let bestDigit = 0;
+        let maxProb = probs[0] * blendFactor + (order2Pred.digit === 0 ? order2Pred.confidence / 100 * (1 - blendFactor) : 0);
+        
+        for (let i = 1; i < 10; i++) {
+          const combinedProb = probs[i] * blendFactor + (order2Pred.digit === i ? order2Pred.confidence / 100 * (1 - blendFactor) : 0);
+          if (combinedProb > maxProb) {
+            maxProb = combinedProb;
+            bestDigit = i;
+          }
+        }
+        
+        return { digit: bestDigit, confidence: maxProb * 100, current: total, required: 8 };
+      }
+    }
+    
+    function updatePredictionUI(pred, lastDigit) {
+      predictedDigit = pred.digit;
+      predictionConfidence = pred.confidence;
+      
+      const duration = parseInt(document.getElementById('duration').value);
+      
+      // Update progress bar for data gathering
+      const progressBar = document.getElementById('dataProgress');
+      const progressFill = document.getElementById('dataProgressFill');
+      const progressText = document.getElementById('dataProgressText');
+      
+      if (pred.digit === null) {
+        // Show progress bar
+        progressBar.style.display = 'block';
+        const current = pred.current || 0;
+        const required = pred.required || 15;
+        const percentage = Math.min(100, (current / required) * 100);
+        
+        progressFill.style.width = percentage + '%';
+        progressText.textContent = `Gathering data: ${current}/${required} samples`;
+        
+        document.getElementById('predictionInfo').textContent = `Building pattern database... Please wait.`;
+        App.modules.UI.updatePredictionDisplay(null, 0);
+        return;
+      } else {
+        // Hide progress bar when ready
+        progressBar.style.display = 'none';
+      }
 
-// ============ UI UPDATE FUNCTIONS ============
-function updateStatus(text, className) { 
-    const s = document.getElementById('status'); 
-    s.textContent = text; 
-    s.className = 'status ' + className; 
-}
+      const orderName = currentOrder === 1 ? "Order-1" : currentOrder === 2 ? "Order-2" : "Order-3";
+      const info = `${orderName} Model: Predicted digit in ${duration} tick${duration > 1 ? 's' : ''} = ${pred.digit} (${pred.confidence.toFixed(1)}% probability)`;
+      document.getElementById('predictionInfo').textContent = info;
+      
+      const strengthEl = document.getElementById('patternStrength');
+      const indicatorEl = document.getElementById('patternIndicator');
+      
+      if (pred.confidence > 25) {
+        strengthEl.textContent = "Very Strong";
+        indicatorEl.className = "pattern-indicator pattern-strong";
+      } else if (pred.confidence > 18) {
+        strengthEl.textContent = "Strong";
+        indicatorEl.className = "pattern-indicator pattern-strong";
+      } else if (pred.confidence > 14) {
+        strengthEl.textContent = "Moderate";
+        indicatorEl.className = "pattern-indicator pattern-medium";
+      } else {
+        strengthEl.textContent = "Weak";
+        indicatorEl.className = "pattern-indicator pattern-weak";
+      }
+      
+      document.getElementById('probabilityValue').textContent = pred.confidence.toFixed(1) + '%';
+      
+      // Data points available
+      let dataPoints = pred.current || 0;
+      document.getElementById('patternScore').textContent = dataPoints;
+      
+      const freq = digitHistory.filter(d => d === pred.digit).length;
+      const freqPct = digitHistory.length > 0 ? (freq / digitHistory.length * 100) : 0;
+      document.getElementById('frequencyValue').textContent = freqPct.toFixed(1) + '%';
+      
+      App.modules.UI.updatePredictionDisplay(pred.digit, pred.confidence);
+    }
+    
+    function updateDisplay() {
+      const container = document.getElementById('digitDisplay');
+      container.innerHTML = '';
+      digitHistory.slice(0, 50).forEach((digit, i) => {
+        const box = document.createElement('div');
+        box.className = `digit-box ${i===0 ? 'digit-match' : 'digit-other'}`;
+        box.textContent = digit;
+        container.appendChild(box);
+      });
+      
+      const last = digitHistory[0];
+      if(last !== undefined) {
+          document.getElementById('matchCount').textContent = last;
+          document.getElementById('totalCount').textContent = digitHistory.length;
+      }
+    }
+    
+    function setOrder(order) {
+      currentOrder = order;
+      document.getElementById('currentOrder').textContent = order;
+      App.modules.UI.addLog(`Switched to Order-${order} Markov Model`, "info");
+      
+      // Update UI
+      document.querySelectorAll('.order-option').forEach(el => {
+        el.classList.toggle('active', parseInt(el.dataset.order) === order);
+      });
+    }
+    
+    return {
+      init() {
+        // Order selector
+        document.querySelectorAll('.order-option').forEach(el => {
+          el.addEventListener('click', () => {
+            const order = parseInt(el.dataset.order);
+            setOrder(order);
+          });
+        });
+      },
+      processTick,
+      resetForNewMarket: () => {
+        digitHistory = [];
+        transitionMatrix1 = Array(10).fill(0).map(() => Array(10).fill(0));
+        totalTransitions1 = Array(10).fill(0);
+        transitionMatrix2 = {};
+        totalTransitions2 = {};
+        transitionMatrix3 = {};
+        totalTransitions3 = {};
+        predictedDigit = null;
+        predictionConfidence = 0;
+        lastDigit = null;
+        App.modules.UI.addLog("Memory wiped for new market", "warn");
+      },
+      getPrediction: () => {
+        return { digit: predictedDigit, confidence: predictionConfidence };
+      },
+      getLastDigit: () => lastDigit,
+      getData: () => ({ 
+        transitionMatrix1, 
+        totalTransitions1,
+        transitionMatrix2,
+        totalTransitions2,
+        transitionMatrix3,
+        totalTransitions3,
+        currentOrder
+      }),
+      setData: (data) => {
+        if(data.transitionMatrix1) transitionMatrix1 = data.transitionMatrix1;
+        if(data.totalTransitions1) totalTransitions1 = data.totalTransitions1;
+        if(data.transitionMatrix2) transitionMatrix2 = data.transitionMatrix2;
+        if(data.totalTransitions2) totalTransitions2 = data.totalTransitions2;
+        if(data.transitionMatrix3) transitionMatrix3 = data.transitionMatrix3;
+        if(data.totalTransitions3) totalTransitions3 = data.totalTransitions3;
+        if(data.currentOrder) {
+          currentOrder = data.currentOrder;
+          document.getElementById('currentOrder').textContent = currentOrder;
+          document.querySelectorAll('.order-option').forEach(el => {
+            el.classList.toggle('active', parseInt(el.dataset.order) === currentOrder);
+          });
+        }
+      }
+    };
+  })();
 
-function updateBalance() { 
-    document.getElementById('balanceDisplay').style.display = 'block'; 
-    document.getElementById('balance').textContent = parseFloat(accountBalance).toFixed(2); 
-}
+  // ============ VIRTUAL TRADE MODULE ============
+  App.modules.VirtualTrade = (function() {
+    let isVirtualMode = false;
+    let virtualStats = {
+      totalTrades: 0,
+      consecLosses: 0,
+      profit: 0
+    };
+    let pendingVirtualTrade = null;
+    
+    function init() {
+      document.getElementById('virtualTradeToggle').addEventListener('change', (e) => {
+        const isEnabled = e.target.checked;
+        if (isEnabled) {
+          resetVirtualStats();
+          App.modules.UI.addLog("Virtual Trade Mode ENABLED", "info");
+          document.getElementById('virtualModeBadge').classList.add('active');
+        } else {
+          App.modules.UI.addLog("Virtual Trade Mode DISABLED", "warn");
+          document.getElementById('virtualModeBadge').classList.remove('active');
+        }
+        App.modules.UI.saveSettings();
+      });
+      
+      const saved = localStorage.getItem('virtual_stats_dm_pro');
+      if (saved) {
+        virtualStats = JSON.parse(saved);
+        updateVirtualUI();
+      }
+    }
+    
+    function isEnabled() {
+      return document.getElementById('virtualTradeToggle').checked;
+    }
+    
+    function shouldSwitchToLive() {
+      const threshold = parseInt(document.getElementById('virtualLossThreshold').value);
+      return virtualStats.consecLosses >= threshold;
+    }
+    
+    function queueVirtualTrade(targetDigit, confidence) {
+      if (!isVirtualMode) {
+        isVirtualMode = true;
+      }
+      
+      pendingVirtualTrade = {
+        targetDigit: targetDigit,
+        confidence: confidence,
+        timestamp: Date.now()
+      };
+      
+      App.modules.UI.addLog(`[VIRTUAL] Trade queued: Digit ${targetDigit} (Prob: ${confidence.toFixed(1)}%)`, "info");
+    }
+    
+    function processTickResult(actualDigit) {
+      if (!pendingVirtualTrade) return;
+      
+      const trade = pendingVirtualTrade;
+      pendingVirtualTrade = null;
+      
+      virtualStats.totalTrades++;
+      
+      const isWin = (actualDigit === trade.targetDigit);
+      const stake = parseFloat(document.getElementById('stake').value);
+      const payout = isWin ? stake * 0.95 : -stake;
+      
+      virtualStats.profit += payout;
+      
+      if (isWin) {
+        virtualStats.consecLosses = 0;
+        App.modules.UI.addLog(`[VIRTUAL] WIN: Digit ${trade.targetDigit} matched ${actualDigit} ($${payout.toFixed(2)})`, "success");
+      } else {
+        virtualStats.consecLosses++;
+        App.modules.UI.addLog(`[VIRTUAL] LOSS: Expected ${trade.targetDigit}, got ${actualDigit} ($${payout.toFixed(2)}) | Consecutive: ${virtualStats.consecLosses}`, "error");
+      }
+      
+      App.modules.UI.addToHistory(virtualStats.totalTrades, isWin ? 'Win' : 'Loss', payout, Config.currentMarketValue, true);
+      
+      updateVirtualUI();
+      saveVirtualStats();
+      
+      if (shouldSwitchToLive()) {
+        switchToLiveMode();
+      }
+      
+      return { isWin, payout };
+    }
+    
+    function switchToLiveMode() {
+      App.modules.UI.addLog(`🔴 SWITCHING TO LIVE MODE - ${virtualStats.consecLosses} consecutive losses reached!`, "warn");
+      document.getElementById('virtualTradeToggle').checked = false;
+      document.getElementById('virtualModeBadge').classList.remove('active');
+      isVirtualMode = false;
+      
+      virtualStats.consecLosses = 0;
+      updateVirtualUI();
+      saveVirtualStats();
+    }
+    
+    function updateVirtualUI() {
+      document.getElementById('virtualConsecLosses').textContent = virtualStats.consecLosses;
+      document.getElementById('virtualTotalTrades').textContent = virtualStats.totalTrades;
+      const profitEl = document.getElementById('virtualProfit');
+      profitEl.textContent = virtualStats.profit.toFixed(2);
+      profitEl.style.color = virtualStats.profit > 0 ? '#22c55e' : (virtualStats.profit < 0 ? '#ef4444' : '#8b5cf6');
+    }
+    
+    function saveVirtualStats() {
+      localStorage.setItem('virtual_stats_dm_pro', JSON.stringify(virtualStats));
+    }
+    
+    function resetVirtualStats() {
+      virtualStats = {
+        totalTrades: 0,
+        consecLosses: 0,
+        profit: 0
+      };
+      isVirtualMode = false;
+      pendingVirtualTrade = null;
+      updateVirtualUI();
+      saveVirtualStats();
+    }
+    
+    return {
+      init,
+      isEnabled,
+      queueVirtualTrade,
+      processTickResult,
+      resetVirtualStats,
+      getStats: () => virtualStats
+    };
+  })();
 
-function updateStats() {
-  document.getElementById('trades').textContent = stats.trades;
-  document.getElementById('wins').textContent = stats.wins;
-  document.getElementById('losses').textContent = stats.losses;
-  const p = document.getElementById('profit');
-  p.textContent = stats.profit.toFixed(2);
-  p.style.color = stats.profit > 0 ? '#22c55e' : (stats.profit < 0 ? '#ef4444' : '#e5e7eb');
-}
+  // ============ TRADER MODULE ============
+  App.modules.Trader = (function() {
+    let isAutoRunning = false;
+    let currentContractId = null;
+    let stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
+    let lastTradeTime = 0;
+    
+    let isMarketCycleActive = false;
+    let isCooldownLoopActive = false;
+    let isCycleCooldown = false;
+    let currentMarketIndex = 0;
+    let cycleTimerId = null;
+    
+    function placeTrade(targetDigit, conf, isVirtual = false) {
+      if (!App.modules.Connection.isConnected() && !isVirtual) {
+        App.modules.UI.addLog("Error: Not connected to Deriv", "error");
+        return;
+      }
+      
+      const stake = parseFloat(document.getElementById('stake').value);
+      const duration = parseInt(document.getElementById('duration').value);
+      const market = Config.currentMarketValue;
+      
+      if (isNaN(stake) || stake < 0.35) {
+        App.modules.UI.addLog("Error: Invalid stake amount", "error");
+        return;
+      }
+      
+      if (isNaN(targetDigit) || targetDigit < 0 || targetDigit > 9) {
+        App.modules.UI.addLog("Error: Invalid target digit", "error");
+        return;
+      }
+      
+      if (isVirtual) {
+        App.modules.UI.addLog(`[VIRTUAL] Buying Digit ${targetDigit} (AI Prob: ${conf.toFixed(1)}%)`, "info");
+        App.modules.VirtualTrade.queueVirtualTrade(targetDigit, conf);
+        return;
+      }
+      
+      App.modules.UI.addLog(`[LIVE] Buying Digit ${targetDigit} (AI Prob: ${conf.toFixed(1)}%)`, "info");
+      
+      App.modules.Connection.sendAPIRequest({
+        buy: 1,
+        price: stake,
+        parameters: { 
+          contract_type: 'DIGITMATCH', 
+          symbol: market, 
+          duration: duration, 
+          duration_unit: 't', 
+          barrier: targetDigit.toString(),
+          amount: stake, 
+          basis: 'stake', 
+          currency: 'USD' 
+        }
+      });
+    }
+    
+    function checkAndAutoTrade(prediction) {
+      if (currentContractId !== null) return;
+      if (prediction.digit === null || prediction.digit === undefined) return; 
+      
+      const now = Date.now();
+      const cooldownSec = parseFloat(document.getElementById('cooldown').value);
+      
+      const isVirtualEnabled = App.modules.VirtualTrade.isEnabled();
+      
+      // Exclusive Prediction Mapper Logic
+      const isMapperOn = document.getElementById('mapperToggle').checked;
+      const mapTrigger = document.getElementById('mapperTrigger').value;
+      const mapTarget = document.getElementById('mapperTarget').value;
+      
+      let finalTarget = prediction.digit;
+      let finalConfidence = prediction.confidence;
+      
+      if (isMapperOn && mapTrigger !== "" && mapTarget !== "") {
+          const trigger = parseInt(mapTrigger);
+          const target = parseInt(mapTarget);
+          
+          if (isNaN(trigger) || isNaN(target) || trigger < 0 || trigger > 9 || target < 0 || target > 9) {
+            return;
+          }
+          
+          if (prediction.digit === trigger) {
+              finalTarget = target;
+              App.modules.UI.addLog(`⚡ Map Active: AI said ${trigger}, Trading ${target}`, "warn");
+          } else {
+              return; 
+          }
+      } else {
+        const manualDigit = parseInt(document.getElementById('manualDigit').value);
+        if (!isNaN(manualDigit) && manualDigit !== 0 && prediction.digit !== manualDigit) {
+          return;
+        }
+      }
+      
+      if (isNaN(finalTarget) || finalTarget < 0 || finalTarget > 9) {
+        App.modules.UI.addLog("Error: Invalid final target digit", "error");
+        return;
+      }
+      
+      const userMinConf = parseFloat(document.getElementById('minConfidence').value);
+      if (finalConfidence < userMinConf) return;
+      
+      if (now - lastTradeTime < (cooldownSec * 1000)) return;
+      
+      lastTradeTime = now;
+      
+      if (isVirtualEnabled) {
+        placeTrade(finalTarget, finalConfidence, true);
+      } else {
+        placeTrade(finalTarget, finalConfidence, false);
+      }
+    }
+    
+    function handleTradeResult(contract) {
+      const isWin = contract.status === 'won';
+      const pl = parseFloat(contract.profit || 0);
+      
+      stats.trades++;
+      if(isWin) stats.wins++; else stats.losses++;
+      stats.profit += pl;
+      
+      App.modules.UI.addLog(`[LIVE] Result: ${isWin?'WIN':'LOSS'} ($${pl.toFixed(2)})`, isWin?'success':'error');
+      App.modules.UI.updateStats(stats);
+      App.modules.UI.addToHistory(stats.trades, isWin?'Win':'Loss', pl, Config.currentMarketValue, false);
+      
+      localStorage.setItem('trade_stats_dm_pro', JSON.stringify(stats));
+      localStorage.setItem('trade_history_dm_pro', document.getElementById('history').innerHTML);
+      
+      checkTargets();
+    }
+    
+    function checkTargets() {
+      const tp = parseFloat(document.getElementById('takeprofit').value);
+      const sl = parseFloat(document.getElementById('stoploss').value);
+      
+      if (stats.profit <= -sl) {
+        toggleAuto(false);
+        App.modules.UI.addLog("Stop Loss Hit.", "error");
+        return;
+      }
+      
+      if (stats.profit >= tp) {
+        if (isMarketCycleActive) {
+           advanceCycle();
+        } else {
+           toggleAuto(false);
+           App.modules.UI.addLog("Take Profit Hit.", "success");
+        }
+      }
+    }
+    
+    function advanceCycle() {
+      if (currentMarketIndex < Config.marketSequence.length - 1) {
+        currentMarketIndex++;
+        const next = Config.marketSequence[currentMarketIndex];
+        App.modules.UI.addLog(`Cycle Target Reached. Switching to ${next}`, "success");
+        
+        stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
+        App.modules.UI.updateStats(stats);
+        
+        App.modules.UI.selectMarket(next);
+      } else {
+        App.modules.UI.addLog("Full Market Cycle Complete.", "success");
+        stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
+        App.modules.UI.updateStats(stats);
+        
+        if (isCooldownLoopActive) {
+          startCycleCooldown();
+        } else {
+          toggleAuto(false);
+          isMarketCycleActive = false;
+          document.getElementById('cycleBtn').classList.remove('active');
+          document.getElementById('cycleBtn').textContent = "Auto Market Cycle: OFF";
+        }
+      }
+    }
+    
+    function startCycleCooldown() {
+      isCycleCooldown = true;
+      let min = parseInt(document.getElementById('cycleWaitTime').value);
+      let sec = min * 60;
+      const disp = document.getElementById('cycleTimerDisplay');
+      disp.style.display = 'block';
+      
+      App.modules.UI.addLog(`Cycle cooldown active: waiting ${min}m...`, "warn");
+      
+      if (cycleTimerId) clearInterval(cycleTimerId);
+      cycleTimerId = setInterval(() => {
+        sec--;
+        const m = Math.floor(sec/60);
+        const s = sec%60;
+        disp.textContent = `Next Loop in: ${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        
+        if (sec <= 0) {
+          clearInterval(cycleTimerId);
+          isCycleCooldown = false;
+          currentMarketIndex = 0;
+          disp.style.display = 'none';
+          const nextMarket = Config.marketSequence[0];
+          Config.currentMarketValue = nextMarket;
+          App.modules.UI.selectMarket(nextMarket);
+          document.getElementById('cycleBtn').textContent = `Auto Market Cycle: ON (${nextMarket})`;
+          App.modules.UI.addLog(`Cooldown finished. Restarting cycle at ${nextMarket}.`, "success");
+        }
+      }, 1000);
+    }
+    
+    function toggleAuto(forceState) {
+      if (typeof forceState === 'boolean') isAutoRunning = forceState;
+      else isAutoRunning = !isAutoRunning;
+      
+      const btn = document.getElementById('autoBtn');
+      if (isAutoRunning) {
+        localStorage.setItem('isAutoRunning', 'true');
+        btn.textContent = "Stop Auto";
+        btn.style.background = "#ef4444";
+        
+        const mode = App.modules.VirtualTrade.isEnabled() ? "VIRTUAL" : "LIVE";
+        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode.`, "success");
+      } else {
+        localStorage.removeItem('isAutoRunning');
+        btn.textContent = "Start Auto";
+        btn.style.background = "#22c55e";
+        App.modules.UI.addLog("Auto-Trade Stopped.", "warn");
+      }
+    }
+    
+    function toggleMarketCycle() {
+      isMarketCycleActive = !isMarketCycleActive;
+      const btn = document.getElementById('cycleBtn');
+      if (isMarketCycleActive) {
+        btn.classList.add('active');
+        currentMarketIndex = Config.marketSequence.indexOf(Config.currentMarketValue);
+        if(currentMarketIndex === -1) currentMarketIndex = 0;
+        btn.textContent = `Auto Market Cycle: ON (${Config.marketSequence[currentMarketIndex]})`;
+        App.modules.UI.addLog(`Market Cycle Started at ${Config.marketSequence[currentMarketIndex]}.`, "info");
+      } else {
+        btn.classList.remove('active');
+        btn.textContent = "Auto Market Cycle: OFF";
+        App.modules.UI.addLog(`Market Cycle Disabled.`, "warn");
+      }
+    }
+    
+    function toggleCooldownLoop() {
+      isCooldownLoopActive = !isCooldownLoopActive;
+      const btn = document.getElementById('cooldownBtn');
+      if (isCooldownLoopActive) {
+        btn.classList.add('active');
+        btn.textContent = "Cycle Cooldown Loop: ON";
+        App.modules.UI.addLog(`Cooldown Loop Enabled.`, "info");
+      } else {
+        btn.classList.remove('active');
+        btn.textContent = "Cycle Cooldown Loop: OFF";
+        App.modules.UI.addLog(`Cooldown Loop Disabled.`, "warn");
+      }
+    }
+    
+    function resetStats() {
+      stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
+      App.modules.UI.updateStats(stats);
+      document.getElementById('history').innerHTML = '';
+      localStorage.removeItem('trade_stats_dm_pro');
+      localStorage.removeItem('trade_history_dm_pro');
+      
+      App.modules.VirtualTrade.resetVirtualStats();
+      
+      App.modules.UI.addLog("All stats reset.", "info");
+    }
+    
+    return {
+      init() {
+        document.getElementById('autoBtn').addEventListener('click', () => toggleAuto());
+        document.getElementById('manualBtn').addEventListener('click', () => {
+            const pred = App.modules.Analyzer.getPrediction();
+            if(pred.digit !== null && pred.digit !== undefined) {
+              const isVirtual = App.modules.VirtualTrade.isEnabled();
+              placeTrade(pred.digit, pred.confidence, isVirtual);
+            } else {
+              App.modules.UI.addLog("No prediction available yet", "warn");
+            }
+        });
+        document.getElementById('cycleBtn').addEventListener('click', toggleMarketCycle);
+        document.getElementById('cooldownBtn').addEventListener('click', toggleCooldownLoop);
+        document.getElementById('resetBtn').addEventListener('click', resetStats);
+        
+        const s = localStorage.getItem('trade_stats_dm_pro');
+        if(s) { stats = JSON.parse(s); App.modules.UI.updateStats(stats); }
+      },
+      checkAndAutoTrade,
+      setContractId: (id) => currentContractId = id,
+      handleTradeResult,
+      getAutoRunning: () => isAutoRunning,
+      getCycleCooldown: () => isCycleCooldown,
+      resumeAutoTrade: () => toggleAuto(true)
+    };
+  })();
 
-function startSessionTimer() {
-    if (timerIntervalId) clearInterval(timerIntervalId);
-    sessionStartTime = Date.now(); 
-    timerIntervalId = setInterval(() => {
-        updateSignalWindowTimer();
+  // ============ UI MODULE ============
+  App.modules.UI = (function() {
+    let sessionStartTime = null;
+    let timerIntervalId = null;
+    
+    function init() {
+      document.querySelectorAll('#marketRadios .radio-option').forEach(opt => {
+        opt.addEventListener('click', (e) => {
+          const m = e.currentTarget.dataset.market;
+          selectMarket(m);
+        });
+      });
+      
+      document.querySelectorAll('.save-setting').forEach(el => {
+        el.addEventListener('change', saveSettings);
+        el.addEventListener('input', saveSettings);
+      });
+      
+      document.getElementById('clearLog').addEventListener('click', () => {
+         document.getElementById('logContainer').innerHTML = '';
+      });
+    }
+    
+    function addLog(msg, type = 'info') {
+      const container = document.getElementById('logContainer');
+      const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-msg-${type}">${msg}</span>`;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    }
+    
+    function updateStatus(text, className) { 
+      const s = document.getElementById('status'); 
+      s.textContent = text; 
+      s.className = 'status ' + className; 
+    }
+    
+    function updateBalance() { 
+      document.getElementById('balanceDisplay').style.display = 'block'; 
+      document.getElementById('balance').textContent = parseFloat(Config.accountBalance).toFixed(2); 
+    }
+    
+    function updateStats(stats) {
+      document.getElementById('trades').textContent = stats.trades;
+      document.getElementById('wins').textContent = stats.wins;
+      document.getElementById('losses').textContent = stats.losses;
+      const p = document.getElementById('profit');
+      p.textContent = stats.profit.toFixed(2);
+      p.style.color = stats.profit > 0 ? '#22c55e' : (stats.profit < 0 ? '#ef4444' : '#e5e7eb');
+    }
+    
+    function startSessionTimer() {
+      if (timerIntervalId) clearInterval(timerIntervalId);
+      sessionStartTime = Date.now(); 
+      timerIntervalId = setInterval(() => {
         const now = Date.now();
         const s = Math.floor((now - sessionStartTime) / 1000);
         document.getElementById('sessionTimer').textContent = `Session: ${Math.floor(s/3600).toString().padStart(2,'0')}:${Math.floor((s%3600)/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`;
-        
-        if (isAutoRunning && autoStartTime) {
-            const limitHours = parseFloat(document.getElementById('autoDurationHrs').value) || 0;
-            if (limitHours <= 0) {
-                document.getElementById('shutdownDisplay').textContent = `Shutdown in: Unlimited`;
-                return;
-            }
-            const limitMs = limitHours * 3600000;
-            const elapsedMs = now - autoStartTime;
-            const remainingMs = limitMs - elapsedMs;
-            if (remainingMs <= 0) {
-                addLog("Trade Duration Elapsed. Auto-Shutdown triggered.", "warn");
-                toggleAuto();
-            } else {
-                const remS = Math.floor(remainingMs / 1000);
-                const h = Math.floor(remS / 3600).toString().padStart(2, '0');
-                const m = Math.floor((remS % 3600) / 60).toString().padStart(2, '0');
-                const sec = (remS % 60).toString().padStart(2, '0');
-                document.getElementById('shutdownDisplay').textContent = `Shutdown in: ${h}:${m}:${sec}`;
-            }
-        }
-    }, 1000);
-}
-
-function checkRiskManagement() {
-  const sl = parseFloat(document.getElementById('stoploss').value);
-  const tp = parseFloat(document.getElementById('takeprofit').value);
-  
-  if (stats.profit <= -sl) { 
-    if (isAutoRunning) toggleAuto(); 
-    addLog("Stop Loss Met. Trading stopped.", "error"); 
-  }
-  
-  if (!isMarketCycleActive && stats.profit >= tp) {
-    if (isAutoRunning) toggleAuto();
-    addLog("Take Profit achieved! Trading stopped.", "success");
-  }
-}
-
-function addToHistory(n, res, pl, m) {
-  const row = document.getElementById('history').insertRow(0);
-  const cls = res.includes('Win') ? 'win' : 'loss';
-  row.innerHTML = `<td>${n}</td><td class="${cls}">${res}</td><td class="${cls}">${pl.toFixed(2)}</td><td>${m}</td>`;
-}
-
-function resetStats() { 
-    stats = { trades: 0, wins: 0, losses: 0, profit: 0 }; 
-    recentWinRates = [];
-    
-    virtualLossStreak = 0;
-    hasSwatchedToLive = false;
-    updateVirtualTradeUI();
-    
-    modelAccuracies = {
-        heuristic: 0,
-        bayesian: 0,
-        markov: 0,
-        psf: 0,
-        lstm: 0
-    };
-    modelPredictions = {
-        heuristic: [],
-        bayesian: [],
-        markov: [],
-        psf: [],
-        lstm: []
-    };
-    
-    updateStats(); 
-    updateModelPerformanceUI();
-    document.getElementById('history').innerHTML = ''; 
-    localStorage.removeItem('trade_stats_v10');
-    localStorage.removeItem('trade_history_v10');
-    addLog("All stats reset.", "info");
-    
-    saveSettings();
-}
-
-function manualTrade() { 
-    if (isConnected) {
-        placeTrade(); 
-    } else {
-        addLog("Not connected. Please login first.", "error");
+      }, 1000);
     }
-}
-
-// ============ INITIALIZATION ============
-window.onload = () => {
-  addLog("Initializing ML Enhanced Trading Bot v3 (PSF + LSTM Optimized)...", "info");
-  loadSettings();
-  
-  const ensembleMaxInput = document.getElementById('patternEnsembleMax');
-  const ensembleMinInput = document.getElementById('patternEnsembleMin');
-  const specEnsInputs = ['specEns1', 'specEns2', 'specEns3', 'specEns4', 'specEns5'];
-  
-  if (ensembleMaxInput) {
-      ensembleMaxInput.addEventListener('input', updateEnsembleFilterStatus);
-      ensembleMaxInput.addEventListener('change', updateEnsembleFilterStatus);
-  }
-  
-  if (ensembleMinInput) {
-      ensembleMinInput.addEventListener('input', updateEnsembleFilterStatus);
-      ensembleMinInput.addEventListener('change', updateEnsembleFilterStatus);
-  }
-  
-  specEnsInputs.forEach(id => {
-      const input = document.getElementById(id);
-      if (input) {
-          input.addEventListener('input', saveSettings);
-          input.addEventListener('change', saveSettings);
+    
+    function addToHistory(n, res, pl, m, isVirtual = false) {
+      const row = document.getElementById('history').insertRow(0);
+      const cls = res === 'Win' ? 'win' : 'loss';
+      const mode = isVirtual ? 'Virtual' : 'Live';
+      row.innerHTML = `<td>${n}</td><td style="color: ${isVirtual ? '#8b5cf6' : '#22c55e'}">${mode}</td><td class="${cls}">${res}</td><td class="${cls}">${pl.toFixed(2)}</td><td>${m}</td>`;
+    }
+    
+    function updatePredictionDisplay(digit, conf) {
+      const box = document.getElementById('predictionDisplay');
+      const bar = document.getElementById('confidenceBar');
+      
+      const visualPercent = Math.min(100, (conf / 25) * 100);
+      bar.style.width = visualPercent + '%';
+      
+      if (digit !== null && digit !== undefined) {
+        const color = conf > 18 ? '#22c55e' : (conf > 14 ? '#f59e0b' : '#94a3b8');
+        box.innerHTML = `<span class="prediction-ready" style="color:${color}">DIGIT ${digit}</span>`;
+      } else {
+        box.innerHTML = `<span class="prediction-waiting">WAITING...</span>`;
       }
-  });
-  
-  const virtualThresholdInput = document.getElementById('virtualLossThreshold');
-  if (virtualThresholdInput) {
-      virtualThresholdInput.addEventListener('input', () => {
-          updateVirtualTradeUI();
-          saveSettings();
+    }
+    
+    function saveSettings() {
+      const set = {
+        analyzer: App.modules.Analyzer.getData(),
+        market: Config.currentMarketValue,
+        mapperToggle: document.getElementById('mapperToggle').checked,
+        virtualTradeToggle: document.getElementById('virtualTradeToggle').checked
+      };
+      document.querySelectorAll('.save-setting').forEach(el => {
+        if(el.type !== 'checkbox') set[el.id] = el.value;
       });
-      virtualThresholdInput.addEventListener('change', () => {
-          updateVirtualTradeUI();
-          saveSettings();
+      localStorage.setItem('settings_dm_pro', JSON.stringify(set));
+    }
+    
+    function loadSettings() {
+      const s = localStorage.getItem('settings_dm_pro');
+      if(s) {
+        const set = JSON.parse(s);
+        for(let k in set) {
+          const el = document.getElementById(k);
+          if(el && el.type !== 'checkbox') el.value = set[k];
+        }
+        
+        if(set.mapperToggle) document.getElementById('mapperToggle').checked = set.mapperToggle;
+        if(set.virtualTradeToggle) {
+          document.getElementById('virtualTradeToggle').checked = set.virtualTradeToggle;
+          if(set.virtualTradeToggle) {
+            document.getElementById('virtualModeBadge').classList.add('active');
+          }
+        }
+        
+        if(set.analyzer) App.modules.Analyzer.setData(set.analyzer);
+        if(set.market) {
+          Config.currentMarketValue = set.market;
+          selectMarket(set.market);
+        }
+      }
+      
+      const h = localStorage.getItem('trade_history_dm_pro');
+      if(h) document.getElementById('history').innerHTML = h;
+    }
+    
+    function selectMarket(m) {
+      Config.currentMarketValue = m;
+      document.querySelectorAll('.radio-option').forEach(el => {
+        el.classList.toggle('selected', el.dataset.market === m);
       });
-  }
-  
-  updateEnsembleFilterStatus();
-  
-  const savedToken = sessionStorage.getItem('derivToken');
-  if (savedToken) { 
-      document.getElementById('token').value = savedToken; 
-      setTimeout(connect, 1000); 
-  }
-  
-  addLog("✅ ML v3 Enhancements Loaded (Optimized Build):", "success");
-  addLog("- Extended history: 5000 ticks", "info");
-  addLog("- Outlier detection & smoothing active", "info");
-  addLog("- 2nd-order Markov chain enabled", "info");
-  addLog("- Fuzzy pattern matching with Levenshtein", "info");
-  addLog("- PSF (Pattern Sequence Forecasting) implemented", "info");
-  addLog("- LSTM Neural Network (32-unit optimized build)", "info");
-  addLog("- Auto-adjusted hyperparameters (stability-first)", "info");
-  addLog("- Dynamic ensemble weighting based on performance", "info");
-  addLog("- Model performance tracking for all 5 models", "info");
-  addLog("- Pattern decay & pruning", "info");
-  addLog("- Pattern Mode uses Next Likely % for filters", "info");
-  addLog("- 🎮 Virtual Trade Mode with auto-switch feature", "success");
-  addLog("- Auto-retrain LSTM every 200 digits (stable)", "info");
-  addLog("- Auto-rebuild PSF patterns every 100 digits", "info");
-  addLog("- Memory-optimized tensor disposal", "info");
-  addLog("Ready to trade with PSF + LSTM enhanced accuracy!", "success");
-};
+      const radioEl = document.getElementById('market'+m.replace('_',''));
+      if(radioEl) radioEl.checked = true;
+      
+      if (App.modules.Connection.isConnected()) {
+        App.modules.Connection.subscribeToTicks();
+      }
+      saveSettings();
+    }
+    
+    return {
+      init,
+      addLog,
+      updateStatus,
+      updateBalance,
+      updateStats,
+      startSessionTimer,
+      addToHistory,
+      updatePredictionDisplay,
+      saveSettings,
+      loadSettings,
+      selectMarket
+    };
+  })();
 
-document.getElementById('logoutBtn').addEventListener('click', () => { 
-    isExplicitLogout = true; 
-    localStorage.removeItem('isAutoRunning');
-    localStorage.removeItem('autoStartTime');
-    
-    if (lstmRetrainInterval) {
-        clearInterval(lstmRetrainInterval);
-        lstmRetrainInterval = null;
-    }
-    
-    if (lstmModel) {
-        lstmModel.dispose();
-        lstmModel = null;
-        lstmInitialized = false;
-    }
-    
-    if (ws) ws.close(); 
-    sessionStorage.removeItem('derivToken'); 
-    addLog("Logging out...", "info");
-    setTimeout(() => location.reload(), 500);
-});
+  // ============ INITIALIZE APP ============
+  window.addEventListener('DOMContentLoaded', () => {
+    App.init();
+  });
+
+})();
 </script>
 </body>
 </html>
