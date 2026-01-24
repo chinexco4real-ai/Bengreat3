@@ -102,6 +102,17 @@ tbody tr:hover { background: #1e293b; }
 .switch-label { color: #ef4444; font-weight: bold; font-size: 14px; }
 .toggle-checkbox { width: 20px !important; height: 20px !important; margin: 0 !important; cursor: pointer; }
 
+/* Statistical Filter Styles */
+.statistical-filter-container { background: #1e293b; padding: 10px; border-radius: 8px; border: 2px solid #06b6d4; margin-bottom: 10px; }
+.statistical-filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.statistical-filter-label { color: #06b6d4; font-weight: bold; font-size: 14px; }
+.statistical-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.statistical-stat-box { background: #0f172a; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #334155; }
+.statistical-stat-box span { font-size: 10px; color: #94a3b8; display: block; }
+.statistical-stat-box b { font-size: 14px; color: #06b6d4; display: block; margin-top: 3px; }
+.stat-pass { color: #22c55e !important; }
+.stat-fail { color: #ef4444 !important; }
+
 /* Virtual Trade Styles */
 .virtual-trade-container { background: #1e293b; padding: 10px; border-radius: 8px; border: 2px solid #8b5cf6; margin-bottom: 10px; }
 .virtual-trade-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -281,6 +292,34 @@ tbody tr:hover { background: #1e293b; }
 <div class="card">
   <h3>Trade Settings</h3>
   
+  <!-- Statistical Filter Section -->
+  <div class="statistical-filter-container">
+    <div class="statistical-filter-header">
+      <div style="display:flex; flex-direction:column;">
+        <span class="statistical-filter-label">🔬 Statistical Randomness Filter</span>
+        <span style="font-size:9px; opacity:0.6;">Only trade if patterns are statistically significant (p<0.05)</span>
+      </div>
+      <div style="display:flex; align-items:center;">
+        <span style="font-size:10px; margin-right:5px; opacity:0.7;">OFF/ON</span>
+        <input type="checkbox" id="statisticalFilterToggle" class="toggle-checkbox save-setting">
+      </div>
+    </div>
+    
+    <div class="statistical-stats">
+      <div class="statistical-stat-box">
+        <span>Chi-Squared Test</span>
+        <b id="chiSquaredStatus" class="stat-fail">N/A</b>
+      </div>
+      <div class="statistical-stat-box">
+        <span>Autocorrelation Test</span>
+        <b id="autocorrelationStatus" class="stat-fail">N/A</b>
+      </div>
+    </div>
+    <div style="font-size: 10px; opacity: 0.8; color: #06b6d4; margin-top: 8px; text-align: center;">
+      Filter blocks trades on truly random data (p-value ≥ 0.05)
+    </div>
+  </div>
+  
   <!-- Virtual Trade Section -->
   <div class="virtual-trade-container">
     <div class="virtual-trade-header">
@@ -445,6 +484,7 @@ tbody tr:hover { background: #1e293b; }
       this.modules.UI.init();
       this.modules.Connection.init();
       this.modules.AIEngine.init();
+      this.modules.StatisticalFilter.init();
       this.modules.Analyzer.init();
       this.modules.VirtualTrade.init();
       this.modules.Trader.init();
@@ -460,6 +500,189 @@ tbody tr:hover { background: #1e293b; }
       this.modules.UI.addLog("System: AI Engine Initialized.", "success");
     }
   };
+
+  // ============ STATISTICAL FILTER MODULE ============
+  App.modules.StatisticalFilter = (function() {
+    let lastTestResults = {
+      chiSquared: { isPassing: false, pValue: 1 },
+      autocorrelation: { isPassing: false, pValue: 1 }
+    };
+    
+    function init() {
+      document.getElementById('statisticalFilterToggle').addEventListener('change', (e) => {
+        const isEnabled = e.target.checked;
+        if (isEnabled) {
+          App.modules.UI.addLog("Statistical Filter ENABLED - Only trading on significant patterns (p<0.05)", "info");
+        } else {
+          App.modules.UI.addLog("Statistical Filter DISABLED", "warn");
+        }
+        App.modules.UI.saveSettings();
+      });
+    }
+    
+    function isEnabled() {
+      return document.getElementById('statisticalFilterToggle').checked;
+    }
+    
+    // Chi-Squared Test for Uniformity
+    function chiSquaredTest(digitHistory, minSamples = 50) {
+      if (digitHistory.length < minSamples) {
+        return { isPassing: false, pValue: 1, reason: 'insufficient_data' };
+      }
+      
+      const observed = Array(10).fill(0);
+      digitHistory.slice(0, minSamples).forEach(d => observed[d]++);
+      
+      const expected = minSamples / 10;
+      let chiSquared = 0;
+      
+      for (let i = 0; i < 10; i++) {
+        chiSquared += Math.pow(observed[i] - expected, 2) / expected;
+      }
+      
+      // Degrees of freedom = 9 (10 digits - 1)
+      // Critical value at p=0.05 with df=9 is approximately 16.919
+      const criticalValue = 16.919;
+      const pValue = chiSquaredToPValue(chiSquared, 9);
+      
+      // Test passes if pattern is NON-uniform (chi-squared > critical value, p < 0.05)
+      const isPassing = chiSquared > criticalValue;
+      
+      return { isPassing, pValue, chiSquared, criticalValue };
+    }
+    
+    // Approximate chi-squared to p-value conversion
+    function chiSquaredToPValue(chiSq, df) {
+      // Simplified approximation for df=9
+      if (chiSq < 3.325) return 0.95;
+      if (chiSq < 16.919) return 0.5;
+      if (chiSq < 21.666) return 0.01;
+      return 0.001;
+    }
+    
+    // Autocorrelation Test for Independence
+    function autocorrelationTest(digitHistory, lag = 1, minSamples = 50) {
+      if (digitHistory.length < minSamples) {
+        return { isPassing: false, pValue: 1, reason: 'insufficient_data' };
+      }
+      
+      const n = Math.min(digitHistory.length, minSamples);
+      const data = digitHistory.slice(0, n);
+      
+      // Calculate mean
+      const mean = data.reduce((sum, val) => sum + val, 0) / n;
+      
+      // Calculate autocorrelation at lag
+      let numerator = 0;
+      let denominator = 0;
+      
+      for (let i = 0; i < n - lag; i++) {
+        numerator += (data[i] - mean) * (data[i + lag] - mean);
+      }
+      
+      for (let i = 0; i < n; i++) {
+        denominator += Math.pow(data[i] - mean, 2);
+      }
+      
+      const autocorr = denominator !== 0 ? numerator / denominator : 0;
+      
+      // Standard error for autocorrelation under null hypothesis (independence)
+      const standardError = 1 / Math.sqrt(n);
+      
+      // Calculate z-score
+      const zScore = Math.abs(autocorr) / standardError;
+      
+      // Critical z-value for p=0.05 (two-tailed) is approximately 1.96
+      const criticalZ = 1.96;
+      
+      // Calculate approximate p-value from z-score
+      const pValue = 2 * (1 - normalCDF(Math.abs(zScore)));
+      
+      // Test passes if there IS significant autocorrelation (z > critical, p < 0.05)
+      const isPassing = zScore > criticalZ;
+      
+      return { isPassing, pValue, autocorr, zScore, criticalZ };
+    }
+    
+    // Normal CDF approximation (for p-value calculation)
+    function normalCDF(x) {
+      const t = 1 / (1 + 0.2316419 * Math.abs(x));
+      const d = 0.3989423 * Math.exp(-x * x / 2);
+      const prob = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+      return x > 0 ? 1 - prob : prob;
+    }
+    
+    // Master test function
+    function testRandomness(digitHistory) {
+      const chiTest = chiSquaredTest(digitHistory);
+      const autocorrTest = autocorrelationTest(digitHistory);
+      
+      lastTestResults = {
+        chiSquared: chiTest,
+        autocorrelation: autocorrTest
+      };
+      
+      // Update UI
+      updateStatisticalUI(chiTest, autocorrTest);
+      
+      // Overall pass: At least one test shows significant pattern (not random)
+      const isNonRandom = chiTest.isPassing || autocorrTest.isPassing;
+      
+      return {
+        isNonRandom,
+        chiSquared: chiTest,
+        autocorrelation: autocorrTest
+      };
+    }
+    
+    function updateStatisticalUI(chiTest, autocorrTest) {
+      const chiEl = document.getElementById('chiSquaredStatus');
+      const autocorrEl = document.getElementById('autocorrelationStatus');
+      
+      if (chiTest.reason === 'insufficient_data') {
+        chiEl.textContent = 'Collecting...';
+        chiEl.className = 'stat-fail';
+      } else {
+        const status = chiTest.isPassing ? 'PASS' : 'FAIL';
+        chiEl.textContent = `${status} (p=${chiTest.pValue.toFixed(3)})`;
+        chiEl.className = chiTest.isPassing ? 'stat-pass' : 'stat-fail';
+      }
+      
+      if (autocorrTest.reason === 'insufficient_data') {
+        autocorrEl.textContent = 'Collecting...';
+        autocorrEl.className = 'stat-fail';
+      } else {
+        const status = autocorrTest.isPassing ? 'PASS' : 'FAIL';
+        autocorrEl.textContent = `${status} (p=${autocorrTest.pValue.toFixed(3)})`;
+        autocorrEl.className = autocorrTest.isPassing ? 'stat-pass' : 'stat-fail';
+      }
+    }
+    
+    function shouldBlockTrade(digitHistory) {
+      if (!isEnabled()) return false;
+      
+      const result = testRandomness(digitHistory);
+      
+      if (!result.isNonRandom) {
+        App.modules.UI.addLog("🔬 Statistical Filter: Trade blocked - Data appears random (p≥0.05)", "warn");
+        return true;
+      }
+      
+      return false;
+    }
+    
+    function getLastResults() {
+      return lastTestResults;
+    }
+    
+    return {
+      init,
+      isEnabled,
+      testRandomness,
+      shouldBlockTrade,
+      getLastResults
+    };
+  })();
 
   // ============ AI ENGINE MODULE ============
   App.modules.AIEngine = (function() {
@@ -984,6 +1207,15 @@ tbody tr:hover { background: #1e293b; }
       // Get AI-enhanced prediction based on selected model
       const aiPrediction = App.modules.AIEngine.getPrediction(digitHistory, markov1Prediction);
       
+      // Apply statistical filter if enabled
+      if (App.modules.StatisticalFilter.isEnabled() && aiPrediction.digit !== null) {
+        const shouldBlock = App.modules.StatisticalFilter.shouldBlockTrade(digitHistory);
+        if (shouldBlock) {
+          // Return null prediction if statistical filter blocks
+          return { digit: null, confidence: 0, blockedByFilter: true };
+        }
+      }
+      
       return aiPrediction;
     }
     
@@ -994,9 +1226,13 @@ tbody tr:hover { background: #1e293b; }
       const total = totalTransitions[lastDigit];
       
       if (pred.digit === null) {
-        const minSamples = Config.selectedAIModel === 'markov1' ? 15 : 
-                          Config.selectedAIModel === 'markov2' ? 10 : 8;
-        document.getElementById('predictionInfo').textContent = `Gathering data for digit ${lastDigit}... (${total}/${minSamples})`;
+        if (pred.blockedByFilter) {
+          document.getElementById('predictionInfo').textContent = `Statistical filter active - Data appears random, waiting for significant patterns...`;
+        } else {
+          const minSamples = Config.selectedAIModel === 'markov1' ? 15 : 
+                            Config.selectedAIModel === 'markov2' ? 10 : 8;
+          document.getElementById('predictionInfo').textContent = `Gathering data for digit ${lastDigit}... (${total}/${minSamples})`;
+        }
         App.modules.UI.updatePredictionDisplay(null, 0);
         return;
       }
@@ -1077,6 +1313,7 @@ tbody tr:hover { background: #1e293b; }
         return { digit: predictedDigit, confidence: predictionConfidence };
       },
       getLastDigit: () => lastDigit,
+      getDigitHistory: () => digitHistory,
       getData: () => ({ 
         transitionMatrix, 
         totalTransitions,
@@ -1531,7 +1768,8 @@ tbody tr:hover { background: #1e293b; }
         const model = Config.selectedAIModel.toUpperCase();
         const contractType = Config.selectedContractType === 'DIGITMATCH' ? 'DIGIT MATCH' :
                             Config.selectedContractType === 'DIGITOVER' ? 'DIGIT OVER 5' : 'DIGIT UNDER 5';
-        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode using ${model} for ${contractType}.`, "success");
+        const filterStatus = App.modules.StatisticalFilter.isEnabled() ? " with Statistical Filter" : "";
+        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode using ${model} for ${contractType}${filterStatus}.`, "success");
       } else {
         localStorage.removeItem('isAutoRunning');
         btn.textContent = "Start Auto";
@@ -1698,7 +1936,7 @@ tbody tr:hover { background: #1e293b; }
     function updateStatus(text, className) { 
       const s = document.getElementById('status'); 
       s.textContent = text; 
-      s.className = 'status ' + className; 
+      s.className = 'status ' + className;
     }
     
     function updateBalance() { 
@@ -1759,6 +1997,7 @@ tbody tr:hover { background: #1e293b; }
         market: Config.currentMarketValue,
         mapperToggle: document.getElementById('mapperToggle').checked,
         virtualTradeToggle: document.getElementById('virtualTradeToggle').checked,
+        statisticalFilterToggle: document.getElementById('statisticalFilterToggle').checked,
         selectedAIModel: Config.selectedAIModel,
         selectedContractType: Config.selectedContractType
       };
@@ -1783,6 +2022,9 @@ tbody tr:hover { background: #1e293b; }
           if(set.virtualTradeToggle) {
             document.getElementById('virtualModeBadge').classList.add('active');
           }
+        }
+        if(set.statisticalFilterToggle) {
+          document.getElementById('statisticalFilterToggle').checked = set.statisticalFilterToggle;
         }
         
         if(set.analyzer) App.modules.Analyzer.setData(set.analyzer);
