@@ -127,6 +127,16 @@ tbody tr:hover { background: #1e293b; }
 .model-option label { cursor: pointer; margin: 0; font-size: 12px; width: 100%; }
 .model-description { font-size: 9px; opacity: 0.6; margin-top: 2px; }
 .ai-training-status { font-size: 10px; color: #f59e0b; margin-top: 8px; text-align: center; }
+
+/* Contract Type Selector */
+.contract-type-selector { background: #1e293b; padding: 10px; border-radius: 8px; border: 2px solid #f59e0b; margin-bottom: 10px; }
+.contract-type-label { color: #f59e0b; font-weight: bold; font-size: 14px; margin-bottom: 8px; }
+.contract-option { display: flex; align-items: center; padding: 6px; margin: 4px 0; background: #0f172a; border-radius: 4px; cursor: pointer; border: 2px solid #334155; transition: all 0.2s; }
+.contract-option:hover { border-color: #f59e0b; }
+.contract-option.selected { border-color: #f59e0b; background: #3a2e1b; }
+.contract-option input[type="radio"] { margin-right: 8px; cursor: pointer; width: auto; }
+.contract-option label { cursor: pointer; margin: 0; font-size: 12px; width: 100%; }
+.contract-description { font-size: 9px; opacity: 0.6; margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -151,6 +161,34 @@ tbody tr:hover { background: #1e293b; }
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
     <button id="loginBtn">Login</button>
     <button id="logoutBtn" style="background: #ef4444;">Logout</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>📊 Contract Type Selection</h3>
+  <div class="contract-type-selector">
+    <div class="contract-type-label">Select Contract Type:</div>
+    <div class="contract-option selected" data-contract="DIGITMATCH">
+      <input type="radio" name="contractType" value="DIGITMATCH" id="contractDigitMatch" checked>
+      <div style="flex: 1;">
+        <label for="contractDigitMatch">Digit Match</label>
+        <div class="contract-description">Predict exact last digit - Uses AI prediction</div>
+      </div>
+    </div>
+    <div class="contract-option" data-contract="DIGITOVER">
+      <input type="radio" name="contractType" value="DIGITOVER" id="contractDigitOver">
+      <div style="flex: 1;">
+        <label for="contractDigitOver">Digit Over 5</label>
+        <div class="contract-description">Last digit will be over 5 (6,7,8,9)</div>
+      </div>
+    </div>
+    <div class="contract-option" data-contract="DIGITUNDER">
+      <input type="radio" name="contractType" value="DIGITUNDER" id="contractDigitUnder">
+      <div style="flex: 1;">
+        <label for="contractDigitUnder">Digit Under 5</label>
+        <div class="contract-description">Last digit will be under 5 (0,1,2,3,4)</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -291,7 +329,7 @@ tbody tr:hover { background: #1e293b; }
   <label>Manual Digit Override (0 = Auto Mode)</label>
   <input id="manualDigit" class="save-setting" type="number" value="0" min="0" max="9" step="1">
 
-  <div style="margin-top: 15px; border-top: 1px solid #334155; padding-top: 15px;">
+  <div style="margin-top: 15px; border-top: 1px solid #334155; padding-top: 15px;" id="mapperSection">
     <div class="switch-container">
       <div style="display:flex; flex-direction:column;">
         <span class="switch-label">⚡ Exclusive Prediction Mapper</span>
@@ -320,7 +358,7 @@ tbody tr:hover { background: #1e293b; }
 
   <label style="margin-top: 15px;">Market</label>
   <div class="radio-group" id="marketRadios">
-      <div class="radio-option" data-market="R_10">
+      <div class="radio-option selected" data-market="R_10">
           <input type="radio" name="market" value="R_10" id="marketR10" checked>
           <label for="marketR10">R_10</label>
       </div>
@@ -395,7 +433,9 @@ tbody tr:hover { background: #1e293b; }
     currentMarketValue: 'R_10',
     marketSequence: ["R_10", "R_25", "R_50", "R_75", "R_100"],
     accountBalance: 0,
-    selectedAIModel: 'markov1'
+    selectedAIModel: 'markov1',
+    selectedContractType: 'DIGITMATCH',
+    maxHistoryRows: 500
   };
 
   // ============ APP MODULES ============
@@ -761,7 +801,7 @@ tbody tr:hover { background: #1e293b; }
       isExplicitLogout = false;
       App.modules.UI.updateStatus('Connecting...', 'disconnected');
       
-      ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+      ws = new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=116948');
       
       ws.onopen = () => { 
         App.modules.UI.addLog("WebSocket Connected.", "info"); 
@@ -1091,19 +1131,22 @@ tbody tr:hover { background: #1e293b; }
       return virtualStats.consecLosses >= threshold;
     }
     
-    function queueVirtualTrade(targetDigit, confidence) {
+    function queueVirtualTrade(contractType, targetDigit, confidence) {
       if (!isVirtualMode) {
         isVirtualMode = true;
       }
       
       // Store the pending trade
       pendingVirtualTrade = {
+        contractType: contractType,
         targetDigit: targetDigit,
         confidence: confidence,
         timestamp: Date.now()
       };
       
-      App.modules.UI.addLog(`[VIRTUAL] Trade queued: Digit ${targetDigit} (Prob: ${confidence.toFixed(1)}%)`, "info");
+      const typeDesc = contractType === 'DIGITMATCH' ? `Digit ${targetDigit}` : 
+                       contractType === 'DIGITOVER' ? 'Over 5' : 'Under 5';
+      App.modules.UI.addLog(`[VIRTUAL] Trade queued: ${typeDesc} (Prob: ${confidence.toFixed(1)}%)`, "info");
     }
     
     function processTickResult(actualDigit) {
@@ -1115,19 +1158,30 @@ tbody tr:hover { background: #1e293b; }
       
       virtualStats.totalTrades++;
       
-      // Check if the trade won
-      const isWin = (actualDigit === trade.targetDigit);
+      // Check if the trade won based on contract type
+      let isWin = false;
+      if (trade.contractType === 'DIGITMATCH') {
+        isWin = (actualDigit === trade.targetDigit);
+      } else if (trade.contractType === 'DIGITOVER') {
+        isWin = (actualDigit > 5);
+      } else if (trade.contractType === 'DIGITUNDER') {
+        isWin = (actualDigit < 5);
+      }
+      
       const stake = parseFloat(document.getElementById('stake').value);
       const payout = isWin ? stake * 0.95 : -stake; // Approximate 95% payout
       
       virtualStats.profit += payout;
       
+      const typeDesc = trade.contractType === 'DIGITMATCH' ? `Digit ${trade.targetDigit}` : 
+                       trade.contractType === 'DIGITOVER' ? 'Over 5' : 'Under 5';
+      
       if (isWin) {
         virtualStats.consecLosses = 0;
-        App.modules.UI.addLog(`[VIRTUAL] WIN: Digit ${trade.targetDigit} matched ${actualDigit} ($${payout.toFixed(2)})`, "success");
+        App.modules.UI.addLog(`[VIRTUAL] WIN: ${typeDesc} matched ${actualDigit} ($${payout.toFixed(2)})`, "success");
       } else {
         virtualStats.consecLosses++;
-        App.modules.UI.addLog(`[VIRTUAL] LOSS: Expected ${trade.targetDigit}, got ${actualDigit} ($${payout.toFixed(2)}) | Consecutive: ${virtualStats.consecLosses}`, "error");
+        App.modules.UI.addLog(`[VIRTUAL] LOSS: ${typeDesc}, got ${actualDigit} ($${payout.toFixed(2)}) | Consecutive: ${virtualStats.consecLosses}`, "error");
       }
       
       // Add to history
@@ -1203,8 +1257,8 @@ tbody tr:hover { background: #1e293b; }
     let currentMarketIndex = 0;
     let cycleTimerId = null;
     
-    // Accepts final target digit
-    function placeTrade(targetDigit, conf, isVirtual = false) {
+    // Accepts final target digit or contract type
+    function placeTrade(contractType, targetDigit, conf, isVirtual = false) {
       if (!App.modules.Connection.isConnected() && !isVirtual) {
         App.modules.UI.addLog("Error: Not connected to Deriv", "error");
         return;
@@ -1220,32 +1274,50 @@ tbody tr:hover { background: #1e293b; }
         return;
       }
       
-      if (isNaN(targetDigit) || targetDigit < 0 || targetDigit > 9) {
-        App.modules.UI.addLog("Error: Invalid target digit", "error");
-        return;
+      // For DIGITMATCH, validate target digit
+      if (contractType === 'DIGITMATCH') {
+        if (isNaN(targetDigit) || targetDigit < 0 || targetDigit > 9) {
+          App.modules.UI.addLog("Error: Invalid target digit", "error");
+          return;
+        }
       }
       
       if (isVirtual) {
-        App.modules.UI.addLog(`[VIRTUAL] Buying Digit ${targetDigit} (AI Prob: ${conf.toFixed(1)}%)`, "info");
-        App.modules.VirtualTrade.queueVirtualTrade(targetDigit, conf);
+        const typeDesc = contractType === 'DIGITMATCH' ? `Digit ${targetDigit}` : 
+                         contractType === 'DIGITOVER' ? 'Over 5' : 'Under 5';
+        App.modules.UI.addLog(`[VIRTUAL] Buying ${typeDesc} (AI Prob: ${conf.toFixed(1)}%)`, "info");
+        App.modules.VirtualTrade.queueVirtualTrade(contractType, targetDigit, conf);
         return;
       }
       
-      App.modules.UI.addLog(`[LIVE] Buying Digit ${targetDigit} (AI Prob: ${conf.toFixed(1)}%)`, "info");
+      const typeDesc = contractType === 'DIGITMATCH' ? `Digit ${targetDigit}` : 
+                       contractType === 'DIGITOVER' ? 'Over 5' : 'Under 5';
+      App.modules.UI.addLog(`[LIVE] Buying ${typeDesc} (AI Prob: ${conf.toFixed(1)}%)`, "info");
+      
+      // Build contract parameters based on type
+      const params = {
+        contract_type: contractType,
+        symbol: market,
+        duration: duration,
+        duration_unit: 't',
+        amount: stake,
+        basis: 'stake',
+        currency: 'USD'
+      };
+      
+      // Add barrier for all digit contracts
+      if (contractType === 'DIGITMATCH') {
+        params.barrier = targetDigit.toString();
+      } else if (contractType === 'DIGITOVER') {
+        params.barrier = '5';  // Over 5 means digits 6,7,8,9
+      } else if (contractType === 'DIGITUNDER') {
+        params.barrier = '5';  // Under 5 means digits 0,1,2,3,4
+      }
       
       App.modules.Connection.sendAPIRequest({
         buy: 1,
         price: stake,
-        parameters: { 
-          contract_type: 'DIGITMATCH', 
-          symbol: market, 
-          duration: duration, 
-          duration_unit: 't', 
-          barrier: targetDigit.toString(),
-          amount: stake, 
-          basis: 'stake', 
-          currency: 'USD' 
-        }
+        parameters: params
       });
     }
     
@@ -1253,67 +1325,101 @@ tbody tr:hover { background: #1e293b; }
       // Skip if contract is pending
       if (currentContractId !== null) return;
       
-      // Skip if prediction is not ready
-      if (prediction.digit === null || prediction.digit === undefined) return; 
-      
       const now = Date.now();
       const cooldownSec = parseFloat(document.getElementById('cooldown').value);
       
       // Check if in virtual mode
       const isVirtualEnabled = App.modules.VirtualTrade.isEnabled();
       
-      // === EXCLUSIVE PREDICTION MAPPER LOGIC ===
-      const isMapperOn = document.getElementById('mapperToggle').checked;
-      const mapTrigger = document.getElementById('mapperTrigger').value;
-      const mapTarget = document.getElementById('mapperTarget').value;
+      // Get selected contract type
+      const contractType = Config.selectedContractType;
       
-      let finalTarget = prediction.digit;
-      let finalConfidence = prediction.confidence;
-      
-      if (isMapperOn && mapTrigger !== "" && mapTarget !== "") {
+      // === CONTRACT TYPE LOGIC ===
+      if (contractType === 'DIGITMATCH') {
+        // Skip if prediction is not ready
+        if (prediction.digit === null || prediction.digit === undefined) return;
+        
+        // === EXCLUSIVE PREDICTION MAPPER LOGIC (Only for DIGITMATCH) ===
+        const isMapperOn = document.getElementById('mapperToggle').checked;
+        const mapTrigger = document.getElementById('mapperTrigger').value;
+        const mapTarget = document.getElementById('mapperTarget').value;
+        
+        let finalTarget = prediction.digit;
+        let finalConfidence = prediction.confidence;
+        
+        if (isMapperOn && mapTrigger !== "" && mapTarget !== "") {
           const trigger = parseInt(mapTrigger);
           const target = parseInt(mapTarget);
-        
-        // Validate mapper inputs
+          
+          // Validate mapper inputs
           if (isNaN(trigger) || isNaN(target) || trigger < 0 || trigger > 9 || target < 0 || target > 9) {
             return;
           }
           
           if (prediction.digit === trigger) {
-              finalTarget = target;
-              App.modules.UI.addLog(`⚡ Map Active: AI said ${trigger}, Trading ${target}`, "warn");
+            finalTarget = target;
+            App.modules.UI.addLog(`⚡ Map Active: AI said ${trigger}, Trading ${target}`, "warn");
           } else {
-              // Mapper is ON but prediction doesn't match trigger - skip this trade
-              return; 
+            // Mapper is ON but prediction doesn't match trigger - skip this trade
+            return;
           }
-      } else {
-        // Manual digit override (if not using mapper)
+        } else {
+          // Manual digit override (if not using mapper)
+          const manualDigit = parseInt(document.getElementById('manualDigit').value);
+          if (!isNaN(manualDigit) && manualDigit !== 0 && prediction.digit !== manualDigit) {
+            return;
+          }
+        }
+        
+        // Validate final target
+        if (isNaN(finalTarget) || finalTarget < 0 || finalTarget > 9) {
+          App.modules.UI.addLog("Error: Invalid final target digit", "error");
+          return;
+        }
+        
+        // Check confidence threshold
+        const userMinConf = parseFloat(document.getElementById('minConfidence').value);
+        if (finalConfidence < userMinConf) return;
+        
+        // Check cooldown
+        if (now - lastTradeTime < (cooldownSec * 1000)) return;
+        
+        lastTradeTime = now;
+        
+        // Route to virtual or live trade
+        if (isVirtualEnabled) {
+          placeTrade('DIGITMATCH', finalTarget, finalConfidence, true);
+        } else {
+          placeTrade('DIGITMATCH', finalTarget, finalConfidence, false);
+        }
+        
+      } else if (contractType === 'DIGITOVER' || contractType === 'DIGITUNDER') {
+        // For OVER/UNDER contracts, use same triggers as DIGITMATCH but ignore mapper
+        
+        // Skip if prediction is not ready (still use prediction as trigger)
+        if (prediction.digit === null || prediction.digit === undefined) return;
+        
+        // Check confidence threshold (use same threshold as DIGITMATCH)
+        const userMinConf = parseFloat(document.getElementById('minConfidence').value);
+        if (prediction.confidence < userMinConf) return;
+        
+        // Manual digit override check (if set, only trade when prediction matches)
         const manualDigit = parseInt(document.getElementById('manualDigit').value);
         if (!isNaN(manualDigit) && manualDigit !== 0 && prediction.digit !== manualDigit) {
           return;
         }
-      }
-      
-      // Validate final target
-      if (isNaN(finalTarget) || finalTarget < 0 || finalTarget > 9) {
-        App.modules.UI.addLog("Error: Invalid final target digit", "error");
-        return;
-      }
-      
-      // Check confidence threshold
-      const userMinConf = parseFloat(document.getElementById('minConfidence').value);
-      if (finalConfidence < userMinConf) return;
-      
-      // Check cooldown - reduced from 150ms minimum for faster execution
-      if (now - lastTradeTime < (cooldownSec * 1000)) return;
-      
-      lastTradeTime = now;
-      
-      // Route to virtual or live trade
-      if (isVirtualEnabled) {
-        placeTrade(finalTarget, finalConfidence, true);
-      } else {
-        placeTrade(finalTarget, finalConfidence, false);
+        
+        // Check cooldown
+        if (now - lastTradeTime < (cooldownSec * 1000)) return;
+        
+        lastTradeTime = now;
+        
+        // Route to virtual or live trade (no target digit needed for OVER/UNDER)
+        if (isVirtualEnabled) {
+          placeTrade(contractType, null, prediction.confidence, true);
+        } else {
+          placeTrade(contractType, null, prediction.confidence, false);
+        }
       }
     }
     
@@ -1423,7 +1529,9 @@ tbody tr:hover { background: #1e293b; }
         
         const mode = App.modules.VirtualTrade.isEnabled() ? "VIRTUAL" : "LIVE";
         const model = Config.selectedAIModel.toUpperCase();
-        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode using ${model}.`, "success");
+        const contractType = Config.selectedContractType === 'DIGITMATCH' ? 'DIGIT MATCH' :
+                            Config.selectedContractType === 'DIGITOVER' ? 'DIGIT OVER 5' : 'DIGIT UNDER 5';
+        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode using ${model} for ${contractType}.`, "success");
       } else {
         localStorage.removeItem('isAutoRunning');
         btn.textContent = "Start Auto";
@@ -1480,11 +1588,27 @@ tbody tr:hover { background: #1e293b; }
         document.getElementById('autoBtn').addEventListener('click', () => toggleAuto());
         document.getElementById('manualBtn').addEventListener('click', () => {
             const pred = App.modules.Analyzer.getPrediction();
-            if(pred.digit !== null && pred.digit !== undefined) {
-              const isVirtual = App.modules.VirtualTrade.isEnabled();
-              placeTrade(pred.digit, pred.confidence, isVirtual);
-            } else {
-              App.modules.UI.addLog("No prediction available yet", "warn");
+            const contractType = Config.selectedContractType;
+            const isVirtual = App.modules.VirtualTrade.isEnabled();
+            
+            if (contractType === 'DIGITMATCH') {
+              if(pred.digit !== null && pred.digit !== undefined) {
+                placeTrade('DIGITMATCH', pred.digit, pred.confidence, isVirtual);
+              } else {
+                App.modules.UI.addLog("No prediction available yet", "warn");
+              }
+            } else if (contractType === 'DIGITOVER') {
+              if(pred.digit !== null && pred.digit !== undefined) {
+                placeTrade('DIGITOVER', null, pred.confidence, isVirtual);
+              } else {
+                App.modules.UI.addLog("No prediction available yet", "warn");
+              }
+            } else if (contractType === 'DIGITUNDER') {
+              if(pred.digit !== null && pred.digit !== undefined) {
+                placeTrade('DIGITUNDER', null, pred.confidence, isVirtual);
+              } else {
+                App.modules.UI.addLog("No prediction available yet", "warn");
+              }
             }
         });
         document.getElementById('cycleBtn').addEventListener('click', toggleMarketCycle);
@@ -1509,10 +1633,19 @@ tbody tr:hover { background: #1e293b; }
     let timerIntervalId = null;
     
     function init() {
+      // Market selection
       document.querySelectorAll('#marketRadios .radio-option').forEach(opt => {
         opt.addEventListener('click', (e) => {
           const m = e.currentTarget.dataset.market;
           selectMarket(m);
+        });
+      });
+      
+      // Contract type selection
+      document.querySelectorAll('.contract-option').forEach(opt => {
+        opt.addEventListener('click', (e) => {
+          const contractType = e.currentTarget.dataset.contract;
+          selectContractType(contractType);
         });
       });
       
@@ -1524,6 +1657,32 @@ tbody tr:hover { background: #1e293b; }
       document.getElementById('clearLog').addEventListener('click', () => {
          document.getElementById('logContainer').innerHTML = '';
       });
+    }
+    
+    function selectContractType(type) {
+      Config.selectedContractType = type;
+      document.querySelectorAll('.contract-option').forEach(el => {
+        el.classList.toggle('selected', el.dataset.contract === type);
+      });
+      const radioEl = document.getElementById('contract' + type.charAt(0).toUpperCase() + type.slice(1).replace('OVER', 'Over').replace('UNDER', 'Under').replace('MATCH', 'Match'));
+      if (radioEl) radioEl.checked = true;
+      
+      // Show/hide mapper section based on contract type
+      const mapperSection = document.getElementById('mapperSection');
+      if (type === 'DIGITMATCH') {
+        mapperSection.style.display = 'block';
+      } else {
+        mapperSection.style.display = 'none';
+      }
+      
+      localStorage.setItem('selectedContractType', type);
+      
+      const typeNames = {
+        DIGITMATCH: 'Digit Match',
+        DIGITOVER: 'Digit Over 5',
+        DIGITUNDER: 'Digit Under 5'
+      };
+      addLog(`Contract Type: ${typeNames[type]} selected`, "info");
     }
     
     function addLog(msg, type = 'info') {
@@ -1567,10 +1726,16 @@ tbody tr:hover { background: #1e293b; }
     }
     
     function addToHistory(n, res, pl, m, isVirtual = false) {
-      const row = document.getElementById('history').insertRow(0);
+      const tbody = document.getElementById('history');
+      const row = tbody.insertRow(0);
       const cls = res === 'Win' ? 'win' : 'loss';
       const mode = isVirtual ? 'Virtual' : 'Live';
       row.innerHTML = `<td>${n}</td><td style="color: ${isVirtual ? '#8b5cf6' : '#22c55e'}">${mode}</td><td class="${cls}">${res}</td><td class="${cls}">${pl.toFixed(2)}</td><td>${m}</td>`;
+      
+      // Limit history to max rows
+      while (tbody.rows.length > Config.maxHistoryRows) {
+        tbody.deleteRow(tbody.rows.length - 1);
+      }
     }
     
     function updatePredictionDisplay(digit, conf) {
@@ -1594,7 +1759,8 @@ tbody tr:hover { background: #1e293b; }
         market: Config.currentMarketValue,
         mapperToggle: document.getElementById('mapperToggle').checked,
         virtualTradeToggle: document.getElementById('virtualTradeToggle').checked,
-        selectedAIModel: Config.selectedAIModel
+        selectedAIModel: Config.selectedAIModel,
+        selectedContractType: Config.selectedContractType
       };
       document.querySelectorAll('.save-setting').forEach(el => {
         if(el.type !== 'checkbox') set[el.id] = el.value;
@@ -1632,6 +1798,12 @@ tbody tr:hover { background: #1e293b; }
             if (modelRadio) {
               modelRadio.click();
             }
+          }, 100);
+        }
+        
+        if(set.selectedContractType) {
+          setTimeout(() => {
+            selectContractType(set.selectedContractType);
           }, 100);
         }
       }
