@@ -238,7 +238,7 @@ tbody tr:hover { background: #1e293b; }
   </div>
   
   <div class="prediction-box">
-    <div class="prediction-status">🎯 AI Next Digit Prediction</div>
+    <div class="prediction-status">🎯 AI Next Likely Digit Prediction</div>
     <div class="prediction-digit" id="predictionDisplay">
       <span class="prediction-waiting">WAITING...</span>
     </div>
@@ -925,8 +925,15 @@ tbody tr:hover { background: #1e293b; }
     let predictedDigit = null;
     let predictionConfidence = 0;
     let lastDigit = null;
+    let pendingPrediction = null; // Store prediction for next tick validation
     
     function processTick(digit) {
+      // Check if there's a pending prediction from previous tick
+      if (pendingPrediction !== null) {
+        // Validate the prediction against current digit
+        App.modules.VirtualTrade.processPendingPrediction(digit, pendingPrediction);
+      }
+      
       // Store current digit for virtual trade validation
       lastDigit = digit;
       
@@ -943,20 +950,20 @@ tbody tr:hover { background: #1e293b; }
       // 2. Update AI models (higher-order Markov chains)
       App.modules.AIEngine.updateModels(digitHistory);
       
-      // 3. CALCULATE PREDICTION INTERNALLY (Before UI)
-      const internalPred = calculateInternalPrediction(digit);
+      // 3. CALCULATE PREDICTION FOR NEXT TICK
+      const nextPrediction = calculateInternalPrediction(digit);
       
-      // 4. Process pending virtual trade if exists
-      App.modules.VirtualTrade.processTickResult(digit);
+      // 4. Store prediction for next tick validation
+      pendingPrediction = nextPrediction;
       
-      // 5. TRADE CHECK (Pass the prediction to Trader)
+      // 5. TRADE CHECK (Pass the prediction to Trader for NEXT tick)
       if (App.modules.Trader.getAutoRunning() && !App.modules.Trader.getCycleCooldown()) {
-         App.modules.Trader.checkAndAutoTrade(internalPred); 
+         App.modules.Trader.checkAndAutoTrade(nextPrediction); 
       }
       
       // 6. UPDATE UI
       updateDisplay();
-      updatePredictionUI(internalPred, digit);
+      updatePredictionUI(nextPrediction, digit);
     }
     
     function calculateInternalPrediction(lastDigit) {
@@ -1002,7 +1009,7 @@ tbody tr:hover { background: #1e293b; }
       }
 
       const modelName = getModelDisplayName();
-      const info = `${modelName}: When ${lastDigit} appears, ${pred.digit} follows ${pred.confidence.toFixed(1)}% of the time.`;
+      const info = `${modelName}: After ${lastDigit} appears, ${pred.digit} is likely NEXT with ${pred.confidence.toFixed(1)}% probability.`;
       document.getElementById('predictionInfo').textContent = info;
       
       const strengthEl = document.getElementById('patternStrength');
@@ -1070,6 +1077,7 @@ tbody tr:hover { background: #1e293b; }
         predictedDigit = null;
         predictionConfidence = 0;
         lastDigit = null;
+        pendingPrediction = null;
         App.modules.AIEngine.reset();
         App.modules.UI.addLog("Memory wiped for new market", "warn");
       },
@@ -1146,10 +1154,10 @@ tbody tr:hover { background: #1e293b; }
       
       const typeDesc = contractType === 'DIGITMATCH' ? `Digit ${targetDigit}` : 
                        contractType === 'DIGITOVER' ? 'Over 5' : 'Under 5';
-      App.modules.UI.addLog(`[VIRTUAL] Trade queued: ${typeDesc} (Prob: ${confidence.toFixed(1)}%)`, "info");
+      App.modules.UI.addLog(`[VIRTUAL] Trade queued for NEXT tick: ${typeDesc} (Prob: ${confidence.toFixed(1)}%)`, "info");
     }
     
-    function processTickResult(actualDigit) {
+    function processPendingPrediction(actualDigit, prediction) {
       // Check if there's a pending virtual trade to process
       if (!pendingVirtualTrade) return;
       
@@ -1178,10 +1186,10 @@ tbody tr:hover { background: #1e293b; }
       
       if (isWin) {
         virtualStats.consecLosses = 0;
-        App.modules.UI.addLog(`[VIRTUAL] WIN: ${typeDesc} matched ${actualDigit} ($${payout.toFixed(2)})`, "success");
+        App.modules.UI.addLog(`[VIRTUAL] WIN: Predicted ${typeDesc}, got ${actualDigit} ($${payout.toFixed(2)})`, "success");
       } else {
         virtualStats.consecLosses++;
-        App.modules.UI.addLog(`[VIRTUAL] LOSS: ${typeDesc}, got ${actualDigit} ($${payout.toFixed(2)}) | Consecutive: ${virtualStats.consecLosses}`, "error");
+        App.modules.UI.addLog(`[VIRTUAL] LOSS: Predicted ${typeDesc}, got ${actualDigit} ($${payout.toFixed(2)}) | Consecutive: ${virtualStats.consecLosses}`, "error");
       }
       
       // Add to history
@@ -1238,7 +1246,7 @@ tbody tr:hover { background: #1e293b; }
       init,
       isEnabled,
       queueVirtualTrade,
-      processTickResult,
+      processPendingPrediction,
       resetVirtualStats,
       getStats: () => virtualStats
     };
@@ -1250,6 +1258,7 @@ tbody tr:hover { background: #1e293b; }
     let currentContractId = null;
     let stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
     let lastTradeTime = 0;
+    let pendingLiveTrade = null;
     
     let isMarketCycleActive = false;
     let isCooldownLoopActive = false;
@@ -1285,14 +1294,14 @@ tbody tr:hover { background: #1e293b; }
       if (isVirtual) {
         const typeDesc = contractType === 'DIGITMATCH' ? `Digit ${targetDigit}` : 
                          contractType === 'DIGITOVER' ? 'Over 5' : 'Under 5';
-        App.modules.UI.addLog(`[VIRTUAL] Buying ${typeDesc} (AI Prob: ${conf.toFixed(1)}%)`, "info");
+        App.modules.UI.addLog(`[VIRTUAL] Queuing ${typeDesc} for NEXT tick (AI Prob: ${conf.toFixed(1)}%)`, "info");
         App.modules.VirtualTrade.queueVirtualTrade(contractType, targetDigit, conf);
         return;
       }
       
       const typeDesc = contractType === 'DIGITMATCH' ? `Digit ${targetDigit}` : 
                        contractType === 'DIGITOVER' ? 'Over 5' : 'Under 5';
-      App.modules.UI.addLog(`[LIVE] Buying ${typeDesc} (AI Prob: ${conf.toFixed(1)}%)`, "info");
+      App.modules.UI.addLog(`[LIVE] Buying ${typeDesc} for NEXT tick (AI Prob: ${conf.toFixed(1)}%)`, "info");
       
       // Build contract parameters based on type
       const params = {
@@ -1358,7 +1367,7 @@ tbody tr:hover { background: #1e293b; }
           
           if (prediction.digit === trigger) {
             finalTarget = target;
-            App.modules.UI.addLog(`⚡ Map Active: AI said ${trigger}, Trading ${target}`, "warn");
+            App.modules.UI.addLog(`⚡ Map Active: AI predicts ${trigger} NEXT, Trading ${target}`, "warn");
           } else {
             // Mapper is ON but prediction doesn't match trigger - skip this trade
             return;
@@ -1531,7 +1540,7 @@ tbody tr:hover { background: #1e293b; }
         const model = Config.selectedAIModel.toUpperCase();
         const contractType = Config.selectedContractType === 'DIGITMATCH' ? 'DIGIT MATCH' :
                             Config.selectedContractType === 'DIGITOVER' ? 'DIGIT OVER 5' : 'DIGIT UNDER 5';
-        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode using ${model} for ${contractType}.`, "success");
+        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode using ${model} for ${contractType} (NEXT TICK STRATEGY).`, "success");
       } else {
         localStorage.removeItem('isAutoRunning');
         btn.textContent = "Start Auto";
