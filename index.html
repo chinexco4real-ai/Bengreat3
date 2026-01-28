@@ -117,12 +117,6 @@ tbody tr:hover { background: #1e293b; }
 .virtual-stat-box span { font-size: 10px; color: #94a3b8; display: block; }
 .virtual-stat-box b { font-size: 16px; color: #8b5cf6; display: block; margin-top: 3px; }
 
-/* Loss Streak Boxes */
-.streak-boxes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
-.streak-box { background: #0f172a; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #334155; }
-.streak-box span { font-size: 9px; color: #94a3b8; display: block; margin-bottom: 3px; }
-.streak-box b { font-size: 16px; color: #ef4444; display: block; }
-
 /* AI Model Selector */
 .ai-model-selector { background: #1e293b; padding: 10px; border-radius: 8px; border: 2px solid #3b82f6; margin-bottom: 10px; }
 .ai-model-label { color: #3b82f6; font-weight: bold; font-size: 14px; margin-bottom: 8px; }
@@ -143,36 +137,6 @@ tbody tr:hover { background: #1e293b; }
 .contract-option input[type="radio"] { margin-right: 8px; cursor: pointer; width: auto; }
 .contract-option label { cursor: pointer; margin: 0; font-size: 12px; width: 100%; }
 .contract-description { font-size: 9px; opacity: 0.6; margin-top: 2px; }
-
-/* Advanced Filters */
-.filter-container { background: #1e293b; padding: 10px; border-radius: 8px; border: 2px solid #ec4899; margin-bottom: 10px; }
-.filter-label { color: #ec4899; font-weight: bold; font-size: 14px; margin-bottom: 8px; }
-.filter-toggle-row { display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 8px; border-radius: 6px; margin: 4px 0; border: 1px solid #334155; }
-.filter-toggle-label { font-size: 12px; font-weight: 600; }
-.filter-checkbox { width: 20px !important; height: 20px !important; margin: 0 !important; cursor: pointer; }
-.filter-status { font-size: 10px; margin-top: 5px; padding: 5px; border-radius: 4px; text-align: center; }
-.filter-active { background: #22c55e33; color: #22c55e; }
-.filter-inactive { background: #ef444433; color: #ef4444; }
-.ensemble-selector { background: #0f172a; padding: 8px; border-radius: 6px; margin-top: 8px; border: 1px solid #334155; }
-.ensemble-option-row { display: flex; align-items: center; padding: 4px; margin: 2px 0; }
-.ensemble-option-row input[type="radio"] { margin-right: 8px; width: auto; cursor: pointer; }
-.ensemble-option-row label { font-size: 11px; cursor: pointer; margin: 0; }
-
-/* Consecutive Loss Counter */
-.consec-loss-indicator { background: #1e293b; padding: 8px; border-radius: 6px; text-align: center; margin-top: 8px; border: 1px solid #334155; }
-.consec-loss-indicator span { font-size: 10px; color: #94a3b8; display: block; margin-bottom: 3px; }
-.consec-loss-indicator b { font-size: 16px; color: #ef4444; display: block; }
-
-/* Auto Resume Timer Styles */
-.auto-resume-container { background: #1e293b; padding: 10px; border-radius: 8px; border: 2px solid #3b82f6; margin-bottom: 10px; }
-.auto-resume-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.auto-resume-label { color: #3b82f6; font-weight: bold; font-size: 14px; }
-.auto-resume-badge { background: #3b82f6; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; display: none; }
-.auto-resume-badge.active { display: inline-block; animation: blink 1.5s infinite; }
-.timer-display { color: #3b82f6; font-size: 13px; font-weight: bold; text-align: center; margin-top: 10px; padding: 8px; border: 2px dashed #3b82f6; border-radius: 8px; background: rgba(59, 130, 246, 0.1); display: none; }
-.cumulative-profit-box { background: #0f172a; padding: 10px; border-radius: 6px; text-align: center; border: 1px solid #334155; margin-top: 10px; }
-.cumulative-profit-box span { font-size: 10px; color: #94a3b8; display: block; margin-bottom: 3px; }
-.cumulative-profit-box b { font-size: 20px; display: block; }
 </style>
 </head>
 <body>
@@ -229,51 +193,6 @@ tbody tr:hover { background: #1e293b; }
 </div>
 
 <div class="card">
-  <h3>⚡ Advanced Trading Filters</h3>
-  <div class="filter-container">
-    <div class="filter-label">Smart Risk Management Filters</div>
-    
-    <!-- Volatility Filter -->
-    <div class="filter-toggle-row">
-      <span class="filter-toggle-label">Volatility Filter</span>
-      <input type="checkbox" id="volatilityFilterToggle" class="filter-checkbox save-setting" onchange="updateFilterStatus()">
-    </div>
-    <div id="volatilityFilterStatus" class="filter-status filter-inactive">
-      ❌ Blocks trades when market is chaotic (8+ unique digits in last 10 ticks)
-    </div>
-    
-    <!-- Ensemble Consensus Filter -->
-    <div class="filter-toggle-row" style="margin-top: 10px;">
-      <span class="filter-toggle-label">Ensemble Consensus</span>
-      <input type="checkbox" id="ensembleFilterToggle" class="filter-checkbox save-setting" onchange="updateFilterStatus()">
-    </div>
-    <div id="ensembleFilterStatus" class="filter-status filter-inactive">
-      ❌ Requires model agreement before trading
-    </div>
-    <div id="ensembleSelector" class="ensemble-selector" style="display: none;">
-      <div style="font-size: 11px; color: #94a3b8; margin-bottom: 5px;">Agreement Level:</div>
-      <div class="ensemble-option-row">
-        <input type="radio" id="ensemble2of3" name="ensembleLevel" value="2" class="save-setting" checked onchange="App.modules.UI.saveSettings()">
-        <label for="ensemble2of3">2 out of 3 models (Recommended)</label>
-      </div>
-      <div class="ensemble-option-row">
-        <input type="radio" id="ensemble3of3" name="ensembleLevel" value="3" class="save-setting" onchange="App.modules.UI.saveSettings()">
-        <label for="ensemble3of3">3 out of 3 models (Strict)</label>
-      </div>
-    </div>
-    
-    <!-- Chi-Square Statistical Significance Filter -->
-    <div class="filter-toggle-row" style="margin-top: 10px;">
-      <span class="filter-toggle-label">Chi-Square Significance</span>
-      <input type="checkbox" id="chiSquareFilterToggle" class="filter-checkbox save-setting" onchange="updateFilterStatus()">
-    </div>
-    <div id="chiSquareFilterStatus" class="filter-status filter-inactive">
-      ❌ Verifies pattern is statistically significant (p-value < 0.05)
-    </div>
-  </div>
-</div>
-
-<div class="card">
   <h3>🤖 AI Prediction Model</h3>
   <div class="ai-model-selector">
     <div class="ai-model-label">Select Prediction Engine:</div>
@@ -306,6 +225,57 @@ tbody tr:hover { background: #1e293b; }
       </div>
     </div>
     <div class="ai-training-status" id="aiTrainingStatus">Model Ready</div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>🛡️ AI Noise Filters</h3>
+  <div style="font-size: 11px; opacity: 0.7; margin-bottom: 10px;">
+    Enable filters to block low-quality predictions and reduce noise
+  </div>
+  
+  <div class="switch-container" style="margin-bottom: 8px;">
+    <div style="display:flex; flex-direction:column;">
+      <span class="switch-label" style="color: #8b5cf6;">Entropy Filter</span>
+      <span style="font-size:9px; opacity:0.6;">Blocks random sequences (>95% entropy)</span>
+    </div>
+    <div style="display:flex; align-items:center;">
+      <span style="font-size:10px; margin-right:5px; opacity:0.7;">OFF/ON</span>
+      <input type="checkbox" id="filterEntropy" class="toggle-checkbox save-setting">
+    </div>
+  </div>
+  
+  <div class="switch-container" style="margin-bottom: 8px;">
+    <div style="display:flex; flex-direction:column;">
+      <span class="switch-label" style="color: #8b5cf6;">Multi-Timeframe Filter</span>
+      <span style="font-size:9px; opacity:0.6;">Requires short/medium/long term alignment</span>
+    </div>
+    <div style="display:flex; align-items:center;">
+      <span style="font-size:10px; margin-right:5px; opacity:0.7;">OFF/ON</span>
+      <input type="checkbox" id="filterTimeframe" class="toggle-checkbox save-setting">
+    </div>
+  </div>
+  
+  <div class="switch-container" style="margin-bottom: 8px;">
+    <div style="display:flex; flex-direction:column;">
+      <span class="switch-label" style="color: #8b5cf6;">Stability Filter</span>
+      <span style="font-size:9px; opacity:0.6;">Blocks unstable predictions (<60% stability)</span>
+    </div>
+    <div style="display:flex; align-items:center;">
+      <span style="font-size:10px; margin-right:5px; opacity:0.7;">OFF/ON</span>
+      <input type="checkbox" id="filterStability" class="toggle-checkbox save-setting">
+    </div>
+  </div>
+  
+  <div class="switch-container" style="margin-bottom: 8px; border-color: #8b5cf6;">
+    <div style="display:flex; flex-direction:column;">
+      <span class="switch-label" style="color: #8b5cf6;">Signal-to-Noise Filter</span>
+      <span style="font-size:9px; opacity:0.6;">Blocks weak signals (SNR < 0.3)</span>
+    </div>
+    <div style="display:flex; align-items:center;">
+      <span style="font-size:10px; margin-right:5px; opacity:0.7;">OFF/ON</span>
+      <input type="checkbox" id="filterSNR" class="toggle-checkbox save-setting">
+    </div>
   </div>
 </div>
 
@@ -362,33 +332,6 @@ tbody tr:hover { background: #1e293b; }
 <div class="card">
   <h3>Trade Settings</h3>
   
-  <!-- Auto Resume Timer Section -->
-  <div class="auto-resume-container">
-    <div class="auto-resume-header">
-      <div style="display:flex; flex-direction:column;">
-        <span class="auto-resume-label">⏱️ Auto Resume Timer</span>
-        <span style="font-size:9px; opacity:0.6;">Auto-restart trading after stops/targets</span>
-      </div>
-      <div style="display:flex; align-items:center; gap: 8px;">
-        <span class="auto-resume-badge" id="autoResumeBadge">TIMER ACTIVE</span>
-        <div style="display:flex; align-items:center;">
-          <span style="font-size:10px; margin-right:5px; opacity:0.7;">OFF/ON</span>
-          <input type="checkbox" id="autoResumeToggle" class="toggle-checkbox save-setting">
-        </div>
-      </div>
-    </div>
-    
-    <label style="margin-top: 5px;">Resume Wait Time (Minutes)</label>
-    <input id="autoResumeWaitTime" class="save-setting" type="number" value="5" min="1" max="60" step="1">
-    
-    <div class="timer-display" id="timerDisplay">Resuming in: --:--</div>
-    
-    <div class="cumulative-profit-box">
-      <span>Cumulative Session Profit/Loss</span>
-      <b id="cumulativeProfit" style="color: #22c55e;">0.00</b>
-    </div>
-  </div>
-  
   <!-- Virtual Trade Section -->
   <div class="virtual-trade-container">
     <div class="virtual-trade-header">
@@ -422,36 +365,14 @@ tbody tr:hover { background: #1e293b; }
         <b id="virtualProfit">0.00</b>
       </div>
     </div>
-    
-    <div style="margin-top: 10px;">
-      <div style="font-size: 11px; font-weight: 600; color: #8b5cf6; margin-bottom: 6px;">Top 4 Longest Loss Streaks:</div>
-      <div class="streak-boxes">
-        <div class="streak-box">
-          <span>Streak A</span>
-          <b id="streak1">0</b>
-        </div>
-        <div class="streak-box">
-          <span>Streak B</span>
-          <b id="streak2">0</b>
-        </div>
-        <div class="streak-box">
-          <span>Streak C</span>
-          <b id="streak3">0</b>
-        </div>
-        <div class="streak-box">
-          <span>Streak D</span>
-          <b id="streak4">0</b>
-        </div>
-      </div>
-    </div>
   </div>
   
   <label>Stake ($)</label>
   <input id="stake" class="save-setting" type="number" value="1" min="0.35" step="0.01">
   <label>Duration (Ticks)</label>
   <input id="duration" class="save-setting" type="number" value="1" min="1" max="10">
-  <label>Cooldown (seconds) - Set to 0 for instant trading</label>
-  <input id="cooldown" class="save-setting" type="number" value="2" min="0">
+  <label>Cooldown (seconds)</label>
+  <input id="cooldown" class="save-setting" type="number" value="2" min="1">
   
   <label>Minimum Confidence Threshold (%)</label>
   <input id="minConfidence" class="save-setting" type="number" value="15" min="0" max="100" step="5">
@@ -517,17 +438,6 @@ tbody tr:hover { background: #1e293b; }
   <input id="stoploss" class="save-setting" type="number" value="10" min="1">
   <label>Take Profit ($)</label>
   <input id="takeprofit" class="save-setting" type="number" value="10" min="1">
-  
-  <label>Consecutive Loss Stop (0 = disabled, uses $ Stop Loss)</label>
-  <input id="consecLossStop" class="save-setting" type="number" value="0" min="0" max="50" step="1">
-  <div style="font-size: 10px; opacity: 0.7; margin-top: 3px; color: #94a3b8;">
-    When set to 0, only dollar-based stop loss applies. When &gt; 0, auto-trade stops after this many consecutive losses (resets on win or profit target).
-  </div>
-  
-  <div class="consec-loss-indicator">
-    <span>Current Consecutive Losses</span>
-    <b id="consecLossCounter">0</b>
-  </div>
 </div>
 
 <button id="cycleBtn" class="btn-cycle">Auto Market Cycle: OFF</button>
@@ -576,13 +486,7 @@ tbody tr:hover { background: #1e293b; }
     accountBalance: 0,
     selectedAIModel: 'markov1',
     selectedContractType: 'DIGITMATCH',
-    maxHistoryRows: 2500,
-    
-    // Advanced Filters
-    volatilityFilterEnabled: false,
-    ensembleFilterEnabled: false,
-    chiSquareFilterEnabled: false,
-    ensembleAgreementLevel: 2
+    maxHistoryRows: 500
   };
 
   // ============ APP MODULES ============
@@ -594,7 +498,6 @@ tbody tr:hover { background: #1e293b; }
       this.modules.AIEngine.init();
       this.modules.Analyzer.init();
       this.modules.VirtualTrade.init();
-      this.modules.AutoResume.init();
       this.modules.Trader.init();
       
       this.modules.UI.loadSettings();
@@ -858,24 +761,240 @@ tbody tr:hover { background: #1e293b; }
     function getPrediction(history, markov1Pred) {
       const model = Config.selectedAIModel;
       
+      let prediction;
       switch(model) {
         case 'markov1':
-          return markov1Pred;
+          prediction = markov1Pred;
+          break;
         
         case 'markov2':
           const pred2 = predictMarkov2(history);
-          return pred2.digit !== null ? pred2 : markov1Pred;
+          prediction = pred2.digit !== null ? pred2 : markov1Pred;
+          break;
         
         case 'markov3':
           const pred3 = predictMarkov3(history);
-          return pred3.digit !== null ? pred3 : markov1Pred;
+          prediction = pred3.digit !== null ? pred3 : markov1Pred;
+          break;
         
         case 'ensemble':
-          return predictEnsemble(history, markov1Pred);
+          prediction = predictEnsemble(history, markov1Pred);
+          break;
         
         default:
-          return markov1Pred;
+          prediction = markov1Pred;
       }
+      
+      // ===== APPLY NOISE FILTERS (if enabled) =====
+      if (history.length < 20) {
+        return prediction; // Not enough data for filtering
+      }
+      
+      // Check if each filter is enabled before applying
+      const filterEntropy = document.getElementById('filterEntropy')?.checked || false;
+      const filterTimeframe = document.getElementById('filterTimeframe')?.checked || false;
+      const filterStability = document.getElementById('filterStability')?.checked || false;
+      const filterSNR = document.getElementById('filterSNR')?.checked || false;
+      
+      // Filter 1: Entropy-Based Filter
+      if (filterEntropy) {
+        const entropyCheck = calculateSequenceEntropy(history.slice(0, 20));
+        if (entropyCheck.isRandom) {
+          App.modules.UI.addLog(`🛡️ Entropy Filter: BLOCKED - High entropy (${(entropyCheck.entropy * 100).toFixed(1)}%) indicates random sequence`, "warn");
+          return { digit: null, confidence: 0 };
+        } else {
+          App.modules.UI.addLog(`🛡️ Entropy Filter: PASSED - Entropy: ${(entropyCheck.entropy * 100).toFixed(1)}% (Pattern detected)`, "info");
+        }
+      }
+      
+      // Filter 2: Multi-Timeframe Filter
+      if (filterTimeframe) {
+        const timeframeCheck = analyzeMultipleTimeframes(history);
+        if (timeframeCheck.alignment === 'none') {
+          App.modules.UI.addLog(`🛡️ Timeframe Filter: BLOCKED - No alignment between short/medium/long term predictions`, "warn");
+          return { digit: null, confidence: 0 };
+        }
+        prediction.confidence = Math.min(prediction.confidence, timeframeCheck.confidence);
+        if (timeframeCheck.alignment === 'full') {
+          App.modules.UI.addLog(`🛡️ Timeframe Filter: PASSED - Full alignment across all timeframes (High confidence)`, "success");
+        } else {
+          App.modules.UI.addLog(`🛡️ Timeframe Filter: PASSED - Partial alignment (Medium confidence)`, "info");
+        }
+      }
+      
+      // Filter 3: Prediction Stability Filter
+      if (filterStability) {
+        const stabilityCheck = checkPredictionStability(history);
+        if (stabilityCheck.digit === null) {
+          App.modules.UI.addLog(`🛡️ Stability Filter: BLOCKED - Prediction unstable (<60% consistency)`, "warn");
+          return { digit: null, confidence: 0 };
+        }
+        prediction.confidence = (prediction.confidence + stabilityCheck.confidence) / 2;
+        const stabilityPercent = stabilityCheck.stability ? (stabilityCheck.stability * 100).toFixed(0) : 0;
+        App.modules.UI.addLog(`🛡️ Stability Filter: PASSED - Prediction stable (${stabilityPercent}% consistency)`, "success");
+      }
+      
+      // Filter 4: Signal-to-Noise Ratio Filter
+      if (filterSNR) {
+        const snrCheck = calculateSNR(prediction, history);
+        if (snrCheck.digit === null) {
+          App.modules.UI.addLog(`🛡️ SNR Filter: BLOCKED - Signal-to-noise ratio too low (SNR < 0.3)`, "warn");
+          return { digit: null, confidence: 0 };
+        }
+        prediction.confidence = snrCheck.confidence;
+        const snrValue = snrCheck.snr ? snrCheck.snr.toFixed(2) : 0;
+        App.modules.UI.addLog(`🛡️ SNR Filter: PASSED - Strong signal detected (SNR: ${snrValue})`, "success");
+      }
+      
+      return prediction;
+    }
+    
+    // ===== NOISE FILTER HELPER FUNCTIONS =====
+    
+    // Filter 1: Entropy-Based Filter
+    function calculateSequenceEntropy(sequence) {
+      if (sequence.length < 10) {
+        return { entropy: 0, isRandom: false, hasPattern: false };
+      }
+      
+      const freq = {};
+      sequence.forEach(digit => {
+        freq[digit] = (freq[digit] || 0) + 1;
+      });
+      
+      let entropy = 0;
+      const total = sequence.length;
+      
+      for (let digit in freq) {
+        const p = freq[digit] / total;
+        if (p > 0) {
+          entropy -= p * Math.log2(p);
+        }
+      }
+      
+      const normalizedEntropy = entropy / 3.32; // max is log2(10)
+      
+      return {
+        entropy: normalizedEntropy,
+        isRandom: normalizedEntropy > 0.95,
+        hasPattern: normalizedEntropy < 0.7
+      };
+    }
+    
+    // Filter 2: Multi-Timeframe Filter
+    function analyzeMultipleTimeframes(history) {
+      const shortTerm = history.slice(0, 10);
+      const mediumTerm = history.slice(0, 30);
+      const longTerm = history.slice(0, 50);
+      
+      const shortPrediction = predictFromSequence(shortTerm);
+      const mediumPrediction = predictFromSequence(mediumTerm);
+      const longPrediction = predictFromSequence(longTerm);
+      
+      if (shortPrediction === mediumPrediction && mediumPrediction === longPrediction) {
+        return { digit: shortPrediction, confidence: 25, alignment: 'full' };
+      } else if (shortPrediction === mediumPrediction || shortPrediction === longPrediction) {
+        return { digit: shortPrediction, confidence: 18, alignment: 'partial' };
+      } else {
+        return { digit: null, confidence: 0, alignment: 'none' };
+      }
+    }
+    
+    function predictFromSequence(sequence) {
+      if (sequence.length < 5) return null;
+      
+      const freq = {};
+      sequence.forEach(d => {
+        freq[d] = (freq[d] || 0) + 1;
+      });
+      
+      const maxFreq = Math.max(...Object.values(freq));
+      const candidates = Object.keys(freq).filter(d => freq[d] === maxFreq);
+      return parseInt(candidates[candidates.length - 1]);
+    }
+    
+    // Filter 3: Prediction Stability Filter
+    function checkPredictionStability(history) {
+      const predictions = [];
+      
+      for (let offset = 0; offset < 5; offset++) {
+        const subset = history.slice(offset, Math.min(50 + offset, history.length));
+        if (subset.length >= 10) {
+          predictions.push(quickPredict(subset));
+        }
+      }
+      
+      if (predictions.length === 0) {
+        return { digit: null, confidence: 0, stability: 0 };
+      }
+      
+      const freq = {};
+      predictions.forEach(p => {
+        if (p !== null) {
+          freq[p] = (freq[p] || 0) + 1;
+        }
+      });
+      
+      const maxFreq = Math.max(...Object.values(freq));
+      const stableDigit = Object.keys(freq).find(d => freq[d] === maxFreq);
+      const stability = maxFreq / predictions.length;
+      
+      if (stability < 0.6) {
+        return { digit: null, confidence: 0, stability: stability };
+      }
+      
+      return {
+        digit: parseInt(stableDigit),
+        confidence: stability * 25,
+        stability: stability
+      };
+    }
+    
+    function quickPredict(sequence) {
+      if (sequence.length < 5) return null;
+      
+      const freq = {};
+      sequence.forEach(d => {
+        freq[d] = (freq[d] || 0) + 1;
+      });
+      
+      const maxFreq = Math.max(...Object.values(freq));
+      const digit = Object.keys(freq).find(d => freq[d] === maxFreq);
+      return parseInt(digit);
+    }
+    
+    // Filter 4: Signal-to-Noise Ratio Filter
+    function calculateSNR(prediction, history) {
+      const freq = {};
+      history.slice(0, 50).forEach(d => {
+        freq[d] = (freq[d] || 0) + 1;
+      });
+      
+      const predictedFreq = freq[prediction.digit] || 0;
+      const avgFreq = Object.values(freq).reduce((a, b) => a + b, 0) / 10;
+      
+      const signal = Math.abs(predictedFreq - avgFreq);
+      const noise = calculateStandardDeviation(Object.values(freq));
+      
+      const snr = noise > 0 ? signal / noise : 0;
+      
+      if (snr < 0.3) {
+        return { digit: null, confidence: 0, snr: snr };
+      }
+      
+      return {
+        ...prediction,
+        confidence: prediction.confidence * Math.min(1.2, snr),
+        snr: snr
+      };
+    }
+    
+    function calculateStandardDeviation(values) {
+      if (values.length === 0) return 0;
+      
+      const mean = values.reduce((a, b) => a + b, 0) / values.length;
+      const variance = values.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / values.length;
+      return Math.sqrt(variance);
     }
     
     // Update all models with new tick
@@ -919,30 +1038,6 @@ tbody tr:hover { background: #1e293b; }
       if (data.tickTimestamps) tickTimestamps = data.tickTimestamps;
     }
     
-    // NEW: Get individual predictions from all 3 models for ensemble consensus filter
-    function getAllModelPredictions(history, markov1Pred) {
-      const predictions = [];
-      
-      // Markov1
-      if (markov1Pred && markov1Pred.digit !== null) {
-        predictions.push({ model: 'markov1', digit: markov1Pred.digit, confidence: markov1Pred.confidence });
-      }
-      
-      // Markov2
-      const pred2 = predictMarkov2(history);
-      if (pred2.digit !== null) {
-        predictions.push({ model: 'markov2', digit: pred2.digit, confidence: pred2.confidence });
-      }
-      
-      // Markov3
-      const pred3 = predictMarkov3(history);
-      if (pred3.digit !== null) {
-        predictions.push({ model: 'markov3', digit: pred3.digit, confidence: pred3.confidence });
-      }
-      
-      return predictions;
-    }
-    
     return {
       init,
       updateModels,
@@ -951,8 +1046,7 @@ tbody tr:hover { background: #1e293b; }
       getData,
       setData,
       calculateVolatility,
-      getTimeFeatures,
-      getAllModelPredictions
+      getTimeFeatures
     };
   })();
 
@@ -1032,7 +1126,7 @@ tbody tr:hover { background: #1e293b; }
       }
       
       if (data.buy) {
-        App.modules.Trader.addContractId(data.buy.contract_id);
+        App.modules.Trader.setContractId(data.buy.contract_id);
         App.modules.UI.addLog(`Trade Placed (ID: ${data.buy.contract_id})`, "success");
         sendAPIRequest({ proposal_open_contract: 1, contract_id: data.buy.contract_id, subscribe: 1 });
       }
@@ -1041,7 +1135,7 @@ tbody tr:hover { background: #1e293b; }
         const contract = data.proposal_open_contract;
         if (contract.is_settled === 1 || ['won', 'lost', 'sold'].includes(contract.status)) {
           App.modules.Trader.handleTradeResult(contract);
-          App.modules.Trader.removeContractId(contract.contract_id);
+          App.modules.Trader.setContractId(null);
           if (data.subscription) sendAPIRequest({ forget: data.subscription.id });
         }
       }
@@ -1250,7 +1344,6 @@ tbody tr:hover { background: #1e293b; }
         return { digit: predictedDigit, confidence: predictionConfidence };
       },
       getLastDigit: () => lastDigit,
-      getDigitHistory: () => digitHistory,
       getData: () => ({ 
         transitionMatrix, 
         totalTransitions,
@@ -1261,7 +1354,7 @@ tbody tr:hover { background: #1e293b; }
         if(data.totalTransitions) totalTransitions = data.totalTransitions;
         if(data.aiData) App.modules.AIEngine.setData(data.aiData);
       }
-     };
+    };
   })();
 
   // ============ VIRTUAL TRADE MODULE ============
@@ -1273,9 +1366,6 @@ tbody tr:hover { background: #1e293b; }
       profit: 0
     };
     let pendingVirtualTrade = null;
-    let lossStreaks = []; // Track all loss streaks
-    let currentStreak = 0;
-    let topStreaks = [0, 0, 0, 0]; // Top 4 longest streaks
     
     function init() {
       document.getElementById('virtualTradeToggle').addEventListener('change', (e) => {
@@ -1296,13 +1386,6 @@ tbody tr:hover { background: #1e293b; }
       if (saved) {
         virtualStats = JSON.parse(saved);
         updateVirtualUI();
-      }
-      
-      // Load saved streaks
-      const savedStreaks = localStorage.getItem('virtual_streaks_dm_pro');
-      if (savedStreaks) {
-        topStreaks = JSON.parse(savedStreaks);
-        updateStreakDisplay();
       }
     }
     
@@ -1361,17 +1444,10 @@ tbody tr:hover { background: #1e293b; }
                        trade.contractType === 'DIGITOVER' ? 'Over 5' : 'Under 5';
       
       if (isWin) {
-        // If we had a loss streak, save it before resetting
-        if (currentStreak > 0) {
-          updateTopStreaks(currentStreak);
-          currentStreak = 0;
-        }
-        
         virtualStats.consecLosses = 0;
         App.modules.UI.addLog(`[VIRTUAL] WIN: ${typeDesc} matched ${actualDigit} ($${payout.toFixed(2)})`, "success");
       } else {
         virtualStats.consecLosses++;
-        currentStreak++;
         App.modules.UI.addLog(`[VIRTUAL] LOSS: ${typeDesc}, got ${actualDigit} ($${payout.toFixed(2)}) | Consecutive: ${virtualStats.consecLosses}`, "error");
       }
       
@@ -1387,39 +1463,6 @@ tbody tr:hover { background: #1e293b; }
       }
       
       return { isWin, payout };
-    }
-    
-    function updateTopStreaks(streak) {
-      // Add new streak to array
-      topStreaks.push(streak);
-      
-      // Sort in descending order
-      topStreaks.sort((a, b) => b - a);
-      
-      // Remove duplicates by keeping only unique values
-      topStreaks = [...new Set(topStreaks)];
-      
-      // Keep only top 4
-      topStreaks = topStreaks.slice(0, 4);
-      
-      // Pad with zeros if less than 4
-      while (topStreaks.length < 4) {
-        topStreaks.push(0);
-      }
-      
-      updateStreakDisplay();
-      saveStreakData();
-    }
-    
-    function updateStreakDisplay() {
-      document.getElementById('streak1').textContent = topStreaks[0] || 0;
-      document.getElementById('streak2').textContent = topStreaks[1] || 0;
-      document.getElementById('streak3').textContent = topStreaks[2] || 0;
-      document.getElementById('streak4').textContent = topStreaks[3] || 0;
-    }
-    
-    function saveStreakData() {
-      localStorage.setItem('virtual_streaks_dm_pro', JSON.stringify(topStreaks));
     }
     
     function switchToLiveMode() {
@@ -1454,12 +1497,8 @@ tbody tr:hover { background: #1e293b; }
       };
       isVirtualMode = false;
       pendingVirtualTrade = null;
-      currentStreak = 0;
-      topStreaks = [0, 0, 0, 0];
       updateVirtualUI();
-      updateStreakDisplay();
       saveVirtualStats();
-      saveStreakData();
     }
     
     return {
@@ -1472,270 +1511,18 @@ tbody tr:hover { background: #1e293b; }
     };
   })();
 
-  // ============ AUTO RESUME MODULE ============
-  App.modules.AutoResume = (function() {
-    let isTimerActive = false;
-    let timerIntervalId = null;
-    let cumulativeProfit = 0;
-    let remainingSeconds = 0;
-    
-    function init() {
-      document.getElementById('autoResumeToggle').addEventListener('change', (e) => {
-        const isEnabled = e.target.checked;
-        if (isEnabled) {
-          isTimerActive = true;
-          document.getElementById('autoResumeBadge').classList.add('active');
-          App.modules.UI.addLog("🔔 Auto Resume Timer ENABLED - Will loop with same settings", "info");
-        } else {
-          isTimerActive = false;
-          stopTimer();
-          document.getElementById('autoResumeBadge').classList.remove('active');
-          document.getElementById('timerDisplay').style.display = 'none';
-          // Reset cumulative profit when disabled
-          cumulativeProfit = 0;
-          updateCumulativeDisplay();
-          App.modules.UI.addLog("Auto Resume Timer DISABLED", "warn");
-        }
-        App.modules.UI.saveSettings();
-      });
-      
-      // Load saved cumulative profit
-      const saved = localStorage.getItem('cumulative_profit_dm_pro');
-      if (saved && document.getElementById('autoResumeToggle').checked) {
-        cumulativeProfit = parseFloat(saved);
-        updateCumulativeDisplay();
-      }
-    }
-    
-    function isEnabled() {
-      return document.getElementById('autoResumeToggle').checked;
-    }
-    
-    function startTimer(reason) {
-      if (!isEnabled()) {
-        App.modules.UI.addLog(`⚠️ Auto Resume Timer is OFF - Not starting timer for ${reason}`, "warn");
-        return;
-      }
-      
-      const waitMinutes = parseInt(document.getElementById('autoResumeWaitTime').value);
-      remainingSeconds = waitMinutes * 60;
-      
-      const display = document.getElementById('timerDisplay');
-      display.style.display = 'block';
-      
-      // Log the exact settings that will be used after resume
-      const tp = parseFloat(document.getElementById('takeprofit').value);
-      const sl = parseFloat(document.getElementById('stoploss').value);
-      const consecLoss = parseInt(document.getElementById('consecLossStop').value);
-      
-      App.modules.UI.addLog(`⏱️ Auto Resume Timer Started (${reason})`, "warn");
-      App.modules.UI.addLog(`⚙️ Will resume with: TP=$${tp}, SL=$${sl}, ConsecLoss=${consecLoss}`, "info");
-      App.modules.UI.addLog(`⏳ Waiting ${waitMinutes} minutes before restart...`, "info");
-      
-      if (timerIntervalId) clearInterval(timerIntervalId);
-      
-      timerIntervalId = setInterval(() => {
-        remainingSeconds--;
-        const m = Math.floor(remainingSeconds / 60);
-        const s = remainingSeconds % 60;
-        display.textContent = `Resuming in: ${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        
-        if (remainingSeconds <= 0) {
-          stopTimer();
-          resumeTrading();
-        }
-      }, 1000);
-    }
-    
-    function stopTimer() {
-      if (timerIntervalId) {
-        clearInterval(timerIntervalId);
-        timerIntervalId = null;
-      }
-      remainingSeconds = 0;
-      document.getElementById('timerDisplay').style.display = 'none';
-    }
-    
-    function resumeTrading() {
-      App.modules.UI.addLog("⏱️ ✅ Timer Elapsed - RESUMING TRADING NOW", "success");
-      
-      // Log the settings being used for this cycle
-      const tp = parseFloat(document.getElementById('takeprofit').value);
-      const sl = parseFloat(document.getElementById('stoploss').value);
-      const consecLoss = parseInt(document.getElementById('consecLossStop').value);
-      
-      App.modules.UI.addLog(`🔄 Cycle Settings: TP=$${tp}, SL=$${sl}, ConsecLoss=${consecLoss}`, "success");
-      
-      // Clear trade history for fresh cycle
-      document.getElementById('history').innerHTML = '';
-      localStorage.removeItem('trade_history_dm_pro');
-      
-      // Enable virtual trade mode if not already enabled
-      const virtualToggle = document.getElementById('virtualTradeToggle');
-      if (!virtualToggle.checked) {
-        virtualToggle.checked = true;
-        document.getElementById('virtualModeBadge').classList.add('active');
-        App.modules.UI.addLog("🎮 Virtual Trade Mode AUTO-ENABLED", "info");
-      }
-      
-      // CRITICAL: Reset virtual trade consecutive losses for new cycle
-      App.modules.VirtualTrade.resetVirtualStats();
-      
-      // Enable auto-trade with clean state
-      if (!App.modules.Trader.getAutoRunning()) {
-        App.modules.Trader.toggleAuto(true);
-      }
-      
-      App.modules.UI.saveSettings();
-    }
-    
-    function addToCumulative(profit) {
-      if (isEnabled()) {
-        cumulativeProfit += profit;
-        updateCumulativeDisplay();
-        saveCumulativeProfit();
-        App.modules.UI.addLog(`💰 Cumulative Total: $${cumulativeProfit.toFixed(2)}`, cumulativeProfit > 0 ? "success" : "error");
-      }
-    }
-    
-    function updateCumulativeDisplay() {
-      const el = document.getElementById('cumulativeProfit');
-      el.textContent = cumulativeProfit.toFixed(2);
-      el.style.color = cumulativeProfit > 0 ? '#22c55e' : (cumulativeProfit < 0 ? '#ef4444' : '#8b5cf6');
-    }
-    
-    function saveCumulativeProfit() {
-      localStorage.setItem('cumulative_profit_dm_pro', cumulativeProfit.toString());
-    }
-    
-    function resetCumulative() {
-      cumulativeProfit = 0;
-      updateCumulativeDisplay();
-      saveCumulativeProfit();
-    }
-    
-    return {
-      init,
-      isEnabled,
-      startTimer,
-      stopTimer,
-      addToCumulative,
-      resetCumulative
-    };
-  })();
-
   // ============ TRADER MODULE ============
   App.modules.Trader = (function() {
     let isAutoRunning = false;
-    let activeContractIds = new Set();
+    let currentContractId = null;
     let stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
     let lastTradeTime = 0;
-    let consecutiveLosses = 0;
     
     let isMarketCycleActive = false;
     let isCooldownLoopActive = false;
     let isCycleCooldown = false;
     let currentMarketIndex = 0;
     let cycleTimerId = null;
-    
-    // ============ ADVANCED FILTERS ============
-    
-    // Master filter check function
-    function passAdvancedFilters(prediction) {
-      // Volatility Filter
-      if (Config.volatilityFilterEnabled) {
-        if (!checkVolatilityFilter()) {
-          App.modules.UI.addLog('❌ Volatility Filter: Market too chaotic - Trade blocked', 'warn');
-          return false;
-        }
-      }
-      
-      // Ensemble Consensus Filter
-      if (Config.ensembleFilterEnabled) {
-        if (!checkEnsembleConsensus()) {
-          App.modules.UI.addLog('❌ Ensemble Filter: Insufficient model agreement - Trade blocked', 'warn');
-          return false;
-        }
-      }
-      
-      // Chi-Square Statistical Significance Filter
-      if (Config.chiSquareFilterEnabled) {
-        if (!checkChiSquareSignificance()) {
-          App.modules.UI.addLog('❌ Chi-Square Filter: Pattern not statistically significant - Trade blocked', 'warn');
-          return false;
-        }
-      }
-      
-      return true; // All filters passed
-    }
-    
-    // Volatility Filter - blocks trades when last 10 ticks show 8+ unique digits (chaotic market)
-    function checkVolatilityFilter() {
-      const history = App.modules.Analyzer.getDigitHistory();
-      if (history.length < 10) return true; // Not enough data, allow trade
-      
-      const last10 = history.slice(0, 10);
-      const uniqueDigits = new Set(last10);
-      
-      // If 8 or more unique digits in last 10 ticks, market is too chaotic
-      return uniqueDigits.size < 8;
-    }
-    
-    // Ensemble Consensus - requires 2 or 3 out of 3 models to agree
-    function checkEnsembleConsensus() {
-      const history = App.modules.Analyzer.getDigitHistory();
-      const markov1Pred = App.modules.Analyzer.getPrediction();
-      
-      // Get predictions from all 3 models
-      const allPredictions = App.modules.AIEngine.getAllModelPredictions(history, markov1Pred);
-      
-      if (allPredictions.length < 2) return true; // Not enough models ready, allow trade
-      
-      // Count how many models agree on each digit
-      const predictionCounts = {};
-      allPredictions.forEach(pred => {
-        predictionCounts[pred.digit] = (predictionCounts[pred.digit] || 0) + 1;
-      });
-      
-      const maxAgreement = Math.max(...Object.values(predictionCounts));
-      
-      // Get required agreement level from UI
-      const requiredLevel = parseInt(document.querySelector('input[name="ensembleLevel"]:checked')?.value || '2');
-      
-      return maxAgreement >= requiredLevel;
-    }
-    
-    // Chi-Square Statistical Significance - verifies pattern is real, not just noise around 10% baseline
-    function checkChiSquareSignificance() {
-      const history = App.modules.Analyzer.getDigitHistory();
-      if (history.length < 30) return true; // Need enough data
-      
-      // Count occurrences of each digit in recent history
-      const observed = Array(10).fill(0);
-      const recentTicks = history.slice(0, Math.min(50, history.length));
-      
-      recentTicks.forEach(digit => {
-        observed[digit]++;
-      });
-      
-      // Expected frequency (uniform distribution = 10% for each digit)
-      const expected = recentTicks.length / 10;
-      
-      // Calculate Chi-Square statistic
-      let chiSquare = 0;
-      for (let i = 0; i < 10; i++) {
-        const diff = observed[i] - expected;
-        chiSquare += (diff * diff) / expected;
-      }
-      
-      // Chi-Square critical value for 9 degrees of freedom at p=0.05 is ~16.919
-      // If chi-square > 16.919, pattern is statistically significant (not random)
-      const criticalValue = 16.919;
-      
-      return chiSquare > criticalValue;
-    }
-    
-    // ============ END ADVANCED FILTERS ============
     
     // Accepts final target digit or contract type
     function placeTrade(contractType, targetDigit, conf, isVirtual = false) {
@@ -1802,17 +1589,11 @@ tbody tr:hover { background: #1e293b; }
     }
     
     function checkAndAutoTrade(prediction) {
+      // Skip if contract is pending
+      if (currentContractId !== null) return;
+      
       const now = Date.now();
       const cooldownSec = parseFloat(document.getElementById('cooldown').value);
-      
-      // NEW LOGIC: If cooldown is 0, allow trading even with pending contracts
-      const allowMultipleTrades = (cooldownSec === 0);
-      
-      // Skip if contract is pending AND cooldown is NOT zero
-      if (!allowMultipleTrades && activeContractIds.size > 0) return;
-      
-      // Check cooldown timer only if cooldown > 0
-      if (cooldownSec > 0 && now - lastTradeTime < (cooldownSec * 1000)) return;
       
       // Check if in virtual mode
       const isVirtualEnabled = App.modules.VirtualTrade.isEnabled();
@@ -1824,11 +1605,6 @@ tbody tr:hover { background: #1e293b; }
       if (contractType === 'DIGITMATCH') {
         // Skip if prediction is not ready
         if (prediction.digit === null || prediction.digit === undefined) return;
-        
-        // === ADVANCED FILTERS CHECK ===
-        if (!passAdvancedFilters(prediction)) {
-          return; // Filters blocked the trade
-        }
         
         // === EXCLUSIVE PREDICTION MAPPER LOGIC (Only for DIGITMATCH) ===
         const isMapperOn = document.getElementById('mapperToggle').checked;
@@ -1872,6 +1648,9 @@ tbody tr:hover { background: #1e293b; }
         const userMinConf = parseFloat(document.getElementById('minConfidence').value);
         if (finalConfidence < userMinConf) return;
         
+        // Check cooldown
+        if (now - lastTradeTime < (cooldownSec * 1000)) return;
+        
         lastTradeTime = now;
         
         // Route to virtual or live trade
@@ -1897,6 +1676,9 @@ tbody tr:hover { background: #1e293b; }
           return;
         }
         
+        // Check cooldown
+        if (now - lastTradeTime < (cooldownSec * 1000)) return;
+        
         lastTradeTime = now;
         
         // Route to virtual or live trade (no target digit needed for OVER/UNDER)
@@ -1913,94 +1695,35 @@ tbody tr:hover { background: #1e293b; }
       const pl = parseFloat(contract.profit || 0);
       
       stats.trades++;
-      if(isWin) {
-        stats.wins++;
-        consecutiveLosses = 0; // Reset on win
-      } else {
-        stats.losses++;
-        consecutiveLosses++; // Increment on loss
-      }
+      if(isWin) stats.wins++; else stats.losses++;
       stats.profit += pl;
-      
-      // DO NOT add to cumulative here - only add when cycle completes
       
       App.modules.UI.addLog(`[LIVE] Result: ${isWin?'WIN':'LOSS'} ($${pl.toFixed(2)})`, isWin?'success':'error');
       App.modules.UI.updateStats(stats);
-      App.modules.UI.updateConsecLossCounter(consecutiveLosses);
       App.modules.UI.addToHistory(stats.trades, isWin?'Win':'Loss', pl, Config.currentMarketValue, false);
       
       localStorage.setItem('trade_stats_dm_pro', JSON.stringify(stats));
-      localStorage.setItem('consec_losses_dm_pro', consecutiveLosses.toString());
       localStorage.setItem('trade_history_dm_pro', document.getElementById('history').innerHTML);
       
       checkTargets();
     }
     
     function checkTargets() {
-      // CRITICAL: Always read fresh values from UI inputs
       const tp = parseFloat(document.getElementById('takeprofit').value);
       const sl = parseFloat(document.getElementById('stoploss').value);
-      const consecLossStop = parseInt(document.getElementById('consecLossStop').value);
       
-      let shouldStop = false;
-      let stopReason = '';
-      
-      // Check consecutive loss stop (if enabled - value > 0)
-      if (consecLossStop > 0 && consecutiveLosses >= consecLossStop) {
-        shouldStop = true;
-        stopReason = 'Consecutive Loss Stop';
-        App.modules.UI.addLog(`🛑 Consecutive Loss Stop: ${consecutiveLosses}/${consecLossStop}`, "error");
-      }
-      
-      // Check take profit - use EXACT value from input
-      if (stats.profit >= tp) {
-        shouldStop = true;
-        stopReason = 'Take Profit';
-        // Reset consecutive losses counter when profit target is hit
-        consecutiveLosses = 0;
-        App.modules.UI.updateConsecLossCounter(consecutiveLosses);
-        localStorage.setItem('consec_losses_dm_pro', consecutiveLosses.toString());
-        App.modules.UI.addLog(`✅ Take Profit Hit: $${stats.profit.toFixed(2)}/$${tp.toFixed(2)}`, "success");
-      }
-      
-      // Check dollar-based stop loss - use EXACT value from input
       if (stats.profit <= -sl) {
-        shouldStop = true;
-        stopReason = 'Stop Loss';
-        App.modules.UI.addLog(`🛑 Stop Loss Hit: $${stats.profit.toFixed(2)}/-$${sl.toFixed(2)}`, "error");
+        toggleAuto(false);
+        App.modules.UI.addLog("Stop Loss Hit.", "error");
+        return;
       }
       
-      // If any condition is met, stop trading and optionally start auto-resume
-      if (shouldStop) {
-        if (isMarketCycleActive && stopReason === 'Take Profit') {
-          advanceCycle();
+      if (stats.profit >= tp) {
+        if (isMarketCycleActive) {
+           advanceCycle();
         } else {
-          // Stop auto-trading
-          toggleAuto(false);
-          App.modules.UI.addLog(`🔴 ${stopReason} Triggered - Auto-Trade STOPPED`, stopReason === 'Take Profit' ? 'success' : 'error');
-          
-          // ENFORCED AUTO-RESUME LOGIC
-          if (App.modules.AutoResume.isEnabled()) {
-            App.modules.UI.addLog(`🔔 Auto-Resume is ENABLED - Starting timer...`, "warn");
-            
-            // IMPORTANT: Add cycle profit to cumulative BEFORE resetting
-            const cycleProfit = stats.profit;
-            App.modules.AutoResume.addToCumulative(cycleProfit);
-            App.modules.UI.addLog(`💰 Cycle P/L: $${cycleProfit.toFixed(2)} added to cumulative`, cycleProfit > 0 ? "success" : "error");
-            
-            // CRITICAL: Reset stats for next cycle AFTER adding to cumulative
-            stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
-            consecutiveLosses = 0;
-            App.modules.UI.updateStats(stats);
-            App.modules.UI.updateConsecLossCounter(consecutiveLosses);
-            localStorage.setItem('trade_stats_dm_pro', JSON.stringify(stats));
-            localStorage.setItem('consec_losses_dm_pro', '0');
-            
-            // Start the timer
-            App.modules.AutoResume.startTimer(stopReason);
-          } else {
-            App.modules.UI.addLog(`ℹ️ Auto-Resume is DISABLED. Enable it to automatically restart trading.`, "info");
-          }
+           toggleAuto(false);
+           App.modules.UI.addLog("Take Profit Hit.", "success");
         }
       }
     }
@@ -2012,17 +1735,13 @@ tbody tr:hover { background: #1e293b; }
         App.modules.UI.addLog(`Cycle Target Reached. Switching to ${next}`, "success");
         
         stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
-        consecutiveLosses = 0;
         App.modules.UI.updateStats(stats);
-        App.modules.UI.updateConsecLossCounter(consecutiveLosses);
         
         App.modules.UI.selectMarket(next);
       } else {
         App.modules.UI.addLog("Full Market Cycle Complete.", "success");
         stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
-        consecutiveLosses = 0;
         App.modules.UI.updateStats(stats);
-        App.modules.UI.updateConsecLossCounter(consecutiveLosses);
         
         if (isCooldownLoopActive) {
           startCycleCooldown();
@@ -2071,11 +1790,6 @@ tbody tr:hover { background: #1e293b; }
       
       const btn = document.getElementById('autoBtn');
       if (isAutoRunning) {
-        // RESET consecutive losses to 0 when auto-trade is enabled
-        consecutiveLosses = 0;
-        App.modules.UI.updateConsecLossCounter(consecutiveLosses);
-        localStorage.setItem('consec_losses_dm_pro', '0');
-        
         localStorage.setItem('isAutoRunning', 'true');
         btn.textContent = "Stop Auto";
         btn.style.background = "#ef4444";
@@ -2084,19 +1798,12 @@ tbody tr:hover { background: #1e293b; }
         const model = Config.selectedAIModel.toUpperCase();
         const contractType = Config.selectedContractType === 'DIGITMATCH' ? 'DIGIT MATCH' :
                             Config.selectedContractType === 'DIGITOVER' ? 'DIGIT OVER 5' : 'DIGIT UNDER 5';
-        const cooldownSec = parseFloat(document.getElementById('cooldown').value);
-        const cooldownMsg = cooldownSec === 0 ? " (INSTANT TRADING MODE)" : "";
-        App.modules.UI.addLog(`🚀 Auto-Trade STARTED in ${mode} mode using ${model} for ${contractType}${cooldownMsg}`, "success");
+        App.modules.UI.addLog(`Auto-Trade Enabled in ${mode} mode using ${model} for ${contractType}.`, "success");
       } else {
-        // RESET consecutive losses to 0 when auto-trade is disabled
-        consecutiveLosses = 0;
-        App.modules.UI.updateConsecLossCounter(consecutiveLosses);
-        localStorage.setItem('consec_losses_dm_pro', '0');
-        
         localStorage.removeItem('isAutoRunning');
         btn.textContent = "Start Auto";
         btn.style.background = "#22c55e";
-        App.modules.UI.addLog("🛑 Auto-Trade STOPPED", "warn");
+        App.modules.UI.addLog("Auto-Trade Stopped.", "warn");
       }
     }
     
@@ -2132,29 +1839,15 @@ tbody tr:hover { background: #1e293b; }
     
     function resetStats() {
       stats = { trades: 0, wins: 0, losses: 0, profit: 0 };
-      consecutiveLosses = 0;
       App.modules.UI.updateStats(stats);
-      App.modules.UI.updateConsecLossCounter(consecutiveLosses);
       document.getElementById('history').innerHTML = '';
       localStorage.removeItem('trade_stats_dm_pro');
-      localStorage.removeItem('consec_losses_dm_pro');
       localStorage.removeItem('trade_history_dm_pro');
       
       // Also reset virtual stats
       App.modules.VirtualTrade.resetVirtualStats();
       
-      // Also reset cumulative profit
-      App.modules.AutoResume.resetCumulative();
-      
       App.modules.UI.addLog("All stats reset.", "info");
-    }
-    
-    function addContractId(id) {
-      activeContractIds.add(id);
-    }
-    
-    function removeContractId(id) {
-      activeContractIds.delete(id);
     }
     
     return {
@@ -2189,24 +1882,15 @@ tbody tr:hover { background: #1e293b; }
         document.getElementById('cooldownBtn').addEventListener('click', toggleCooldownLoop);
         document.getElementById('resetBtn').addEventListener('click', resetStats);
         
-        // Load saved stats
         const s = localStorage.getItem('trade_stats_dm_pro');
         if(s) { stats = JSON.parse(s); App.modules.UI.updateStats(stats); }
-        
-        const cl = localStorage.getItem('consec_losses_dm_pro');
-        if(cl) { 
-          consecutiveLosses = parseInt(cl); 
-          App.modules.UI.updateConsecLossCounter(consecutiveLosses);
-        }
       },
       checkAndAutoTrade,
-      addContractId,
-      removeContractId,
+      setContractId: (id) => currentContractId = id,
       handleTradeResult,
       getAutoRunning: () => isAutoRunning,
       getCycleCooldown: () => isCycleCooldown,
-      resumeAutoTrade: () => toggleAuto(true),
-      toggleAuto
+      resumeAutoTrade: () => toggleAuto(true)
     };
   })();
 
@@ -2298,12 +1982,6 @@ tbody tr:hover { background: #1e293b; }
       p.style.color = stats.profit > 0 ? '#22c55e' : (stats.profit < 0 ? '#ef4444' : '#e5e7eb');
     }
     
-    function updateConsecLossCounter(count) {
-      const counter = document.getElementById('consecLossCounter');
-      counter.textContent = count;
-      counter.style.color = count === 0 ? '#22c55e' : (count >= 3 ? '#ef4444' : '#f59e0b');
-    }
-    
     function startSessionTimer() {
       if (timerIntervalId) clearInterval(timerIntervalId);
       sessionStartTime = Date.now(); 
@@ -2348,14 +2026,8 @@ tbody tr:hover { background: #1e293b; }
         market: Config.currentMarketValue,
         mapperToggle: document.getElementById('mapperToggle').checked,
         virtualTradeToggle: document.getElementById('virtualTradeToggle').checked,
-        autoResumeToggle: document.getElementById('autoResumeToggle').checked,
         selectedAIModel: Config.selectedAIModel,
-        selectedContractType: Config.selectedContractType,
-        
-        // Advanced Filters
-        volatilityFilterToggle: document.getElementById('volatilityFilterToggle')?.checked || false,
-        ensembleFilterToggle: document.getElementById('ensembleFilterToggle')?.checked || false,
-        chiSquareFilterToggle: document.getElementById('chiSquareFilterToggle')?.checked || false
+        selectedContractType: Config.selectedContractType
       };
       document.querySelectorAll('.save-setting').forEach(el => {
         if(el.type !== 'checkbox') set[el.id] = el.value;
@@ -2377,12 +2049,6 @@ tbody tr:hover { background: #1e293b; }
           document.getElementById('virtualTradeToggle').checked = set.virtualTradeToggle;
           if(set.virtualTradeToggle) {
             document.getElementById('virtualModeBadge').classList.add('active');
-          }
-        }
-        if(set.autoResumeToggle) {
-          document.getElementById('autoResumeToggle').checked = set.autoResumeToggle;
-          if(set.autoResumeToggle) {
-            document.getElementById('autoResumeBadge').classList.add('active');
           }
         }
         
@@ -2407,25 +2073,6 @@ tbody tr:hover { background: #1e293b; }
             selectContractType(set.selectedContractType);
           }, 100);
         }
-        
-        // Load Advanced Filter settings
-        if(set.volatilityFilterToggle !== undefined) {
-          document.getElementById('volatilityFilterToggle').checked = set.volatilityFilterToggle;
-          Config.volatilityFilterEnabled = set.volatilityFilterToggle;
-        }
-        if(set.ensembleFilterToggle !== undefined) {
-          document.getElementById('ensembleFilterToggle').checked = set.ensembleFilterToggle;
-          Config.ensembleFilterEnabled = set.ensembleFilterToggle;
-        }
-        if(set.chiSquareFilterToggle !== undefined) {
-          document.getElementById('chiSquareFilterToggle').checked = set.chiSquareFilterToggle;
-          Config.chiSquareFilterEnabled = set.chiSquareFilterToggle;
-        }
-        
-        // Update filter status displays after loading
-        setTimeout(() => {
-          if (window.updateFilterStatus) window.updateFilterStatus();
-        }, 200);
       }
       
       const h = localStorage.getItem('trade_history_dm_pro');
@@ -2452,7 +2099,6 @@ tbody tr:hover { background: #1e293b; }
       updateStatus,
       updateBalance,
       updateStats,
-      updateConsecLossCounter,
       startSessionTimer,
       addToHistory,
       updatePredictionDisplay,
@@ -2466,72 +2112,6 @@ tbody tr:hover { background: #1e293b; }
   window.addEventListener('DOMContentLoaded', () => {
     App.init();
   });
-  
-  // ============ GLOBAL FILTER UPDATE FUNCTION ============
-  window.updateFilterStatus = function() {
-    // Volatility Filter
-    const volToggle = document.getElementById('volatilityFilterToggle');
-    const volStatus = document.getElementById('volatilityFilterStatus');
-    if (volToggle && volStatus) {
-      const volEnabled = volToggle.checked;
-      Config.volatilityFilterEnabled = volEnabled;
-      
-      if (volEnabled) {
-        volStatus.className = 'filter-status filter-active';
-        volStatus.textContent = '✅ Active: Blocking trades during chaotic market conditions';
-        App.modules.UI.addLog('Volatility Filter enabled', 'success');
-      } else {
-        volStatus.className = 'filter-status filter-inactive';
-        volStatus.textContent = '❌ Blocks trades when market is chaotic (8+ unique digits in last 10 ticks)';
-      }
-    }
-    
-    // Ensemble Consensus Filter
-    const ensToggle = document.getElementById('ensembleFilterToggle');
-    const ensStatus = document.getElementById('ensembleFilterStatus');
-    const ensSelector = document.getElementById('ensembleSelector');
-    if (ensToggle && ensStatus && ensSelector) {
-      const ensEnabled = ensToggle.checked;
-      Config.ensembleFilterEnabled = ensEnabled;
-      
-      if (ensEnabled) {
-        ensStatus.className = 'filter-status filter-active';
-        ensStatus.textContent = '✅ Active: Requiring model agreement before trading';
-        ensSelector.style.display = 'block';
-        
-        // Update agreement level
-        const agreementLevel = parseInt(document.querySelector('input[name="ensembleLevel"]:checked')?.value || '2');
-        Config.ensembleAgreementLevel = agreementLevel;
-        App.modules.UI.addLog(`Ensemble Consensus enabled (${agreementLevel}/3 agreement required)`, 'success');
-      } else {
-        ensStatus.className = 'filter-status filter-inactive';
-        ensStatus.textContent = '❌ Requires model agreement before trading';
-        ensSelector.style.display = 'none';
-      }
-    }
-    
-    // Chi-Square Statistical Significance Filter
-    const chiToggle = document.getElementById('chiSquareFilterToggle');
-    const chiStatus = document.getElementById('chiSquareFilterStatus');
-    if (chiToggle && chiStatus) {
-      const chiEnabled = chiToggle.checked;
-      Config.chiSquareFilterEnabled = chiEnabled;
-      
-      if (chiEnabled) {
-        chiStatus.className = 'filter-status filter-active';
-        chiStatus.textContent = '✅ Active: Verifying statistical significance of patterns';
-        App.modules.UI.addLog('Chi-Square Significance Filter enabled', 'success');
-      } else {
-        chiStatus.className = 'filter-status filter-inactive';
-        chiStatus.textContent = '❌ Verifies pattern is statistically significant (p-value < 0.05)';
-      }
-    }
-    
-    // Save settings after updating filters
-    if (App && App.modules && App.modules.UI) {
-      App.modules.UI.saveSettings();
-    }
-  };
 
 })();
 </script>
