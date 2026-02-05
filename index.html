@@ -1680,14 +1680,17 @@
         // --- Strategy Analysis Functions ---
         // Super Trend Strategy (1m Candles)
         function analyzeSupertrendStrategy() {
-            if (candle1MinHistory.length < 3) {
-                return { signal: null, message: `Collecting 1-min candles... ${candle1MinHistory.length}/3 needed` };
+            // Include current candle being built in the count
+            const totalCandles = candle1MinHistory.length + (currentCandle1Min.ticks > 0 ? 1 : 0);
+            
+            if (candle1MinHistory.length < 2) {
+                return { signal: null, message: `Collecting 1-min candles... ${totalCandles}/3 needed` };
             }
 
             const atrPeriod = 10;
             const multiplier = 3;
             
-            // Calculate ATR and Supertrend
+            // Use completed candles for analysis
             const atr = calculateATR(candle1MinHistory, atrPeriod);
             const lastCandle = candle1MinHistory[candle1MinHistory.length - 1];
             const prevCandle = candle1MinHistory[candle1MinHistory.length - 2];
@@ -1732,8 +1735,11 @@
 
         // The Bounce Strategy - Trend Continuation (1m Candles)
         function analyzeBounceStrategy() {
-            if (candle1MinHistory.length < 5) {
-                return { signal: null, message: `Collecting 1-min candles... ${candle1MinHistory.length}/5 needed` };
+            // Include current candle being built in the count
+            const totalCandles = candle1MinHistory.length + (currentCandle1Min.ticks > 0 ? 1 : 0);
+            
+            if (candle1MinHistory.length < 4) {
+                return { signal: null, message: `Collecting 1-min candles... ${totalCandles}/5 needed` };
             }
 
             const lastCandle = candle1MinHistory[candle1MinHistory.length - 1];
@@ -1794,8 +1800,11 @@
 
         // The Breakout Strategy - Trend Reversal (1m Candles)
         function analyzeBreakoutStrategy() {
-            if (candle1MinHistory.length < 5) {
-                return { signal: null, message: `Collecting 1-min candles... ${candle1MinHistory.length}/5 needed` };
+            // Include current candle being built in the count
+            const totalCandles = candle1MinHistory.length + (currentCandle1Min.ticks > 0 ? 1 : 0);
+            
+            if (candle1MinHistory.length < 4) {
+                return { signal: null, message: `Collecting 1-min candles... ${totalCandles}/5 needed` };
             }
 
             const lastCandle = candle1MinHistory[candle1MinHistory.length - 1];
@@ -2415,9 +2424,6 @@
 
         function logout() {
             stopAutoTrade();
-            if (isMarketCyclerActive) {
-                stopMarketCycler();
-            }
             isExplicitLogout = true;
             sessionToken = null;
             if (ws) ws.close();
