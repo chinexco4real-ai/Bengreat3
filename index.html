@@ -2229,7 +2229,7 @@
                 }
 
                 // Build 1-minute candles
-                if (['bensniperentry', 'vwap', 'triangle', 'multitime'].includes(currentStrategy)) {
+                if (['supertrend', 'bounce', 'breakout', 'bensniperentry', 'vwap', 'triangle', 'multitime'].includes(currentStrategy)) {
                     if (currentCandle1Min.ticks === 0) {
                         currentCandle1Min.open = currentPrice;
                         currentCandle1Min.high = currentPrice;
@@ -2400,48 +2400,44 @@
         }
 
         function clearTradeHistory() {
-            if (confirm('Are you sure you want to clear the entire trade history and reset statistics?')) {
-                tradeHistory = [];
-                localStorage.setItem('benScalperTradeHistory', JSON.stringify([]));
-                
-                stats.total = 0;
-                stats.wins = 0;
-                stats.losses = 0;
-                stats.profitLoss = 0;
-                
-                updateStatsDisplay();
-                updateTradeHistoryTable();
-                addLog('Trade history and statistics cleared.', 'info');
-            }
+            tradeHistory = [];
+            localStorage.setItem('benScalperTradeHistory', JSON.stringify([]));
+            
+            stats.total = 0;
+            stats.wins = 0;
+            stats.losses = 0;
+            stats.profitLoss = 0;
+            
+            updateStatsDisplay();
+            updateTradeHistoryTable();
+            addLog('Trade history and statistics cleared.', 'info');
         }
 
         function logout() {
-            if (confirm('Are you sure you want to logout?')) {
-                stopAutoTrade();
-                if (isMarketCyclerActive) {
-                    stopMarketCycler();
-                }
-                isExplicitLogout = true;
-                sessionToken = null;
-                if (ws) ws.close();
-                
-                localStorage.removeItem('derivApiToken');
-                localStorage.removeItem('rememberToken');
-                document.getElementById('rememberToken').checked = false;
-                document.getElementById('apiToken').value = '';
-
-                document.getElementById('accountInfo').style.display = 'none';
-                disableTradeButtons();
-                document.getElementById('loginCard').style.display = 'block';
-                document.getElementById('signalMessage').textContent = '⏳ Waiting for connection...';
-
-                const loginBtn = document.getElementById('loginBtn');
-                loginBtn.disabled = false;
-                loginBtn.innerHTML = '<span>🚀</span> Connect';
-                
-                updateConnectionStatus('disconnected');
-                addLog('Logged out successfully.', 'success');
+            stopAutoTrade();
+            if (isMarketCyclerActive) {
+                stopMarketCycler();
             }
+            isExplicitLogout = true;
+            sessionToken = null;
+            if (ws) ws.close();
+            
+            localStorage.removeItem('derivApiToken');
+            localStorage.removeItem('rememberToken');
+            document.getElementById('rememberToken').checked = false;
+            document.getElementById('apiToken').value = '';
+
+            document.getElementById('accountInfo').style.display = 'none';
+            disableTradeButtons();
+            document.getElementById('loginCard').style.display = 'block';
+            document.getElementById('signalMessage').textContent = '⏳ Waiting for connection...';
+
+            const loginBtn = document.getElementById('loginBtn');
+            loginBtn.disabled = false;
+            loginBtn.innerHTML = '<span>🚀</span> Connect';
+            
+            updateConnectionStatus('disconnected');
+            addLog('Logged out successfully.', 'success');
         }
 
         function updateStatsDisplay() {
