@@ -1018,6 +1018,30 @@
                     <div style="font-size: 11px; color: #9ca3af;">
                         Allows only one trade per pattern/setup detection.
                     </div>
+                    
+                    <!-- NEW: ADX Filter -->
+                    <div class="toggle-container" style="margin-top: 15px; border-top: 1px solid #374151; padding-top: 15px;">
+                        <div class="toggle-label">ADX Filter (Trend Strength)</div>
+                        <label class="switch">
+                            <input type="checkbox" id="adxFilterMode">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div style="font-size: 11px; color: #9ca3af; margin-bottom: 10px;">
+                        Only trade when ADX > 20 (strong trend). Filters out ranging markets.
+                    </div>
+                    
+                    <!-- NEW: RSI Filter -->
+                    <div class="toggle-container">
+                        <div class="toggle-label">RSI Filter (Momentum)</div>
+                        <label class="switch">
+                            <input type="checkbox" id="rsiFilterMode">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div style="font-size: 11px; color: #9ca3af;">
+                        BUY only if RSI > 50, SELL only if RSI < 50. Avoids overbought/oversold.
+                    </div>
                 </div>
 
                 <div class="card">
@@ -1198,7 +1222,10 @@
             bollingerLower: 0,
             bollingerMiddle: 0,
             rsi: 0,
-            ema50_5min: 0
+            ema50_5min: 0,
+            adx: 0,  // NEW: ADX indicator
+            plusDI: 0,  // NEW: +DI component
+            minusDI: 0  // NEW: -DI component
         };
 
         // Candle data for different timeframes
@@ -1629,6 +1656,63 @@
             return 100 - (100 / (1 + rs));
         }
 
+        // NEW: Calculate ADX (Average Directional Index)
+        function calculateADX(candles, period = 14) {
+            if (candles.length < period + 1) return { adx: 0, plusDI: 0, minusDI: 0 };
+            
+            const trueRanges = [];
+            const plusDMs = [];
+            const minusDMs = [];
+            
+            // Calculate True Range, +DM, -DM
+            for (let i = 1; i < candles.length; i++) {
+                const high = candles[i].high;
+                const low = candles[i].low;
+                const prevHigh = candles[i - 1].high;
+                const prevLow = candles[i - 1].low;
+                const prevClose = candles[i - 1].close;
+                
+                // True Range
+                const tr = Math.max(
+                    high - low,
+                    Math.abs(high - prevClose),
+                    Math.abs(low - prevClose)
+                );
+                trueRanges.push(tr);
+                
+                // Directional Movement
+                const upMove = high - prevHigh;
+                const downMove = prevLow - low;
+                
+                const plusDM = (upMove > downMove && upMove > 0) ? upMove : 0;
+                const minusDM = (downMove > upMove && downMove > 0) ? downMove : 0;
+                
+                plusDMs.push(plusDM);
+                minusDMs.push(minusDM);
+            }
+            
+            if (trueRanges.length < period) return { adx: 0, plusDI: 0, minusDI: 0 };
+            
+            // Calculate smoothed TR, +DM, -DM
+            const smoothedTR = trueRanges.slice(-period).reduce((a, b) => a + b, 0);
+            const smoothedPlusDM = plusDMs.slice(-period).reduce((a, b) => a + b, 0);
+            const smoothedMinusDM = minusDMs.slice(-period).reduce((a, b) => a + b, 0);
+            
+            // Calculate +DI and -DI
+            const plusDI = smoothedTR > 0 ? (smoothedPlusDM / smoothedTR) * 100 : 0;
+            const minusDI = smoothedTR > 0 ? (smoothedMinusDM / smoothedTR) * 100 : 0;
+            
+            // Calculate DX
+            const diSum = plusDI + minusDI;
+            const diDiff = Math.abs(plusDI - minusDI);
+            const dx = diSum > 0 ? (diDiff / diSum) * 100 : 0;
+            
+            // ADX is smoothed DX (simplified - just using current DX)
+            const adx = dx;
+            
+            return { adx, plusDI, minusDI };
+        }
+
         function calculateMomentum(prices, period) {
             if (prices.length < period + 1) return 0;
             return prices[prices.length - 1] - prices[prices.length - period - 1];
@@ -1755,13 +1839,23 @@
             const prevSupertrend = prevHl2 + (multiplier * atr);
             const wasBullish = prevCandle.close > prevSupertrend;
             
-            updateIndicatorDisplay({
+            const displayData = {
                 'Supertrend': supertrend.toFixed(5),
                 'Price': lastCandle.close.toFixed(5),
                 'ATR': atr.toFixed(5),
                 'Trend': isBullish ? '🟢 Bullish (Green)' : '🔴 Bearish (Red)',
                 '1-Min Candles': candle1MinHistory.length
-            });
+            };
+            
+            // Add filter indicators if enabled
+            if (document.getElementById('adxFilterMode').checked) {
+                displayData['ADX'] = `${strategyIndicators.adx.toFixed(1)} ${strategyIndicators.adx >= 20 ? '✓' : '✗'}`;
+            }
+            if (document.getElementById('rsiFilterMode').checked) {
+                displayData['RSI'] = `${strategyIndicators.rsi.toFixed(1)} ${strategyIndicators.rsi > 30 && strategyIndicators.rsi < 70 ? '✓' : '⚠'}`;
+            }
+            
+            updateIndicatorDisplay(displayData);
 
             // BUY: Price crosses above Supertrend (Red to Green)
             if (!wasBullish && isBullish && lastCandle.close > supertrend) {
@@ -1814,14 +1908,24 @@
                                        (lastCandle.close < prevCandle.open) &&
                                        (lastCandle.open > prevCandle.close);
             
-            updateIndicatorDisplay({
+            const displayData = {
                 'Trend': isUptrend ? '📈 Uptrend' : isDowntrend ? '📉 Downtrend' : '➡️ Neutral',
                 'Support Line': trendlineSupport.toFixed(5),
                 'Resistance Line': trendlineResistance.toFixed(5),
                 'Pattern': isHammer ? 'Hammer' : isBullishEngulfing ? 'Bull Engulf' : 
                           isShootingStar ? 'Shoot Star' : isBearishEngulfing ? 'Bear Engulf' : 'None',
                 '1-Min Candles': candle1MinHistory.length
-            });
+            };
+            
+            // Add filter indicators if enabled
+            if (document.getElementById('adxFilterMode').checked) {
+                displayData['ADX'] = `${strategyIndicators.adx.toFixed(1)} ${strategyIndicators.adx >= 20 ? '✓' : '✗'}`;
+            }
+            if (document.getElementById('rsiFilterMode').checked) {
+                displayData['RSI'] = `${strategyIndicators.rsi.toFixed(1)} ${strategyIndicators.rsi > 30 && strategyIndicators.rsi < 70 ? '✓' : '⚠'}`;
+            }
+            
+            updateIndicatorDisplay(displayData);
 
             // BUY: Uptrend + Price touches support + Bullish pattern
             const touchingSupport = Math.abs(lastCandle.low - trendlineSupport) < (trendlineSupport * 0.002);
@@ -1871,14 +1975,24 @@
                 c.close < uptrendSupport
             );
             
-            updateIndicatorDisplay({
+            const displayData = {
                 'Previous Trend': wasDowntrend ? '📉 Downtrend' : wasUptrend ? '📈 Uptrend' : '➡️ Neutral',
                 'Resistance': downtrendResistance.toFixed(5),
                 'Support': uptrendSupport.toFixed(5),
                 'Volume': highVolume ? 'High 🔥' : 'Normal',
                 'Retest': hasRetestSupport ? 'Support ✓' : hasRetestResistance ? 'Resistance ✓' : 'None',
                 '1-Min Candles': candle1MinHistory.length
-            });
+            };
+            
+            // Add filter indicators if enabled
+            if (document.getElementById('adxFilterMode').checked) {
+                displayData['ADX'] = `${strategyIndicators.adx.toFixed(1)} ${strategyIndicators.adx >= 20 ? '✓' : '✗'}`;
+            }
+            if (document.getElementById('rsiFilterMode').checked) {
+                displayData['RSI'] = `${strategyIndicators.rsi.toFixed(1)} ${strategyIndicators.rsi > 30 && strategyIndicators.rsi < 70 ? '✓' : '⚠'}`;
+            }
+            
+            updateIndicatorDisplay(displayData);
 
             // BUY: Downtrend breaks above resistance
             if (wasDowntrend && lastCandle.close > downtrendResistance) {
@@ -2207,6 +2321,51 @@
                 }
             }
 
+            // NEW: Apply ADX Filter (Trend Strength)
+            const adxFilterEnabled = document.getElementById('adxFilterMode').checked;
+            if (adxFilterEnabled && signal) {
+                const adx = strategyIndicators.adx || 0;
+                
+                if (adx < 20) {
+                    updateSignalUI('NONE', `ADX Filter: Market ranging (ADX: ${adx.toFixed(1)} < 20) - Signal blocked`);
+                    return null;
+                }
+                
+                result.message += ` | ADX: ${adx.toFixed(1)} ✓`;
+            }
+
+            // NEW: Apply RSI Filter (Momentum Direction & Extremes)
+            const rsiFilterEnabled = document.getElementById('rsiFilterMode').checked;
+            if (rsiFilterEnabled && signal) {
+                const rsi = strategyIndicators.rsi || 50;
+                
+                // BUY filter: RSI must be > 50 and not overbought (< 70)
+                if (signal === 'BUY') {
+                    if (rsi <= 50) {
+                        updateSignalUI('NONE', `RSI Filter: BUY blocked - RSI ${rsi.toFixed(1)} ≤ 50 (bearish momentum)`);
+                        return null;
+                    }
+                    if (rsi >= 70) {
+                        updateSignalUI('NONE', `RSI Filter: BUY blocked - RSI ${rsi.toFixed(1)} ≥ 70 (overbought)`);
+                        return null;
+                    }
+                }
+                
+                // SELL filter: RSI must be < 50 and not oversold (> 30)
+                if (signal === 'SELL') {
+                    if (rsi >= 50) {
+                        updateSignalUI('NONE', `RSI Filter: SELL blocked - RSI ${rsi.toFixed(1)} ≥ 50 (bullish momentum)`);
+                        return null;
+                    }
+                    if (rsi <= 30) {
+                        updateSignalUI('NONE', `RSI Filter: SELL blocked - RSI ${rsi.toFixed(1)} ≤ 30 (oversold)`);
+                        return null;
+                    }
+                }
+                
+                result.message += ` | RSI: ${rsi.toFixed(1)} ✓`;
+            }
+
             if (signal) {
                 updateSignalUI(signal, result.message);
                 return signal;
@@ -2320,6 +2479,18 @@
                             currentCandle5Min = { open: 0, high: 0, low: 0, close: 0, ticks: 0, timestamp: 0, volume: 0 };
                         }
                     }
+                }
+                
+                // NEW: Calculate ADX and RSI for filter usage (universal for all strategies)
+                if (candle1MinHistory.length >= 15) {
+                    const adxResult = calculateADX(candle1MinHistory, 14);
+                    strategyIndicators.adx = adxResult.adx;
+                    strategyIndicators.plusDI = adxResult.plusDI;
+                    strategyIndicators.minusDI = adxResult.minusDI;
+                    
+                    const closes1Min = candle1MinHistory.map(c => c.close);
+                    const rsi = calculateRSI(closes1Min, 14);
+                    strategyIndicators.rsi = rsi;
                 }
                 
                 const signal = analyzeMarketSignals();
@@ -2859,6 +3030,8 @@
             addLog('✅ Contract Settlement Monitoring: ENABLED', 'success');
             addLog('✅ Timeout Protection: 90 seconds', 'info');
             addLog('✅ Portfolio Fallback Checks: Every 30 seconds', 'info');
+            addLog('✅ ADX Filter: Available (Trend Strength)', 'info');
+            addLog('✅ RSI Filter: Available (Momentum Direction)', 'info');
             addLog('✅ 3 Professional Trading Strategies loaded', 'success');
             addLog('  1. Super Trend (1m Candles)', 'info');
             addLog('  2. The Bounce Strategy (Trend Continuation)', 'info');
