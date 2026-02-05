@@ -1677,20 +1677,38 @@
                    recent[1].low < recent[0].low;
         }
 
+        function calculateATR(candles, period = 14) {
+            if (candles.length < period + 1) return 0;
+            
+            let atrSum = 0;
+            for (let i = candles.length - period; i < candles.length; i++) {
+                const high = candles[i].high;
+                const low = candles[i].low;
+                const prevClose = i > 0 ? candles[i - 1].close : candles[i].close;
+                
+                const tr = Math.max(
+                    high - low,
+                    Math.abs(high - prevClose),
+                    Math.abs(low - prevClose)
+                );
+                
+                atrSum += tr;
+            }
+            
+            return atrSum / period;
+        }
+
         // --- Strategy Analysis Functions ---
         // Super Trend Strategy (1m Candles)
         function analyzeSupertrendStrategy() {
-            // Include current candle being built in the count
-            const totalCandles = candle1MinHistory.length + (currentCandle1Min.ticks > 0 ? 1 : 0);
-            
-            if (candle1MinHistory.length < 2) {
-                return { signal: null, message: `Collecting 1-min candles... ${totalCandles}/3 needed` };
+            if (candle1MinHistory.length < 3) {
+                return { signal: null, message: `Collecting 1-min candles... ${candle1MinHistory.length}/3 needed` };
             }
 
             const atrPeriod = 10;
             const multiplier = 3;
             
-            // Use completed candles for analysis
+            // Calculate ATR and Supertrend
             const atr = calculateATR(candle1MinHistory, atrPeriod);
             const lastCandle = candle1MinHistory[candle1MinHistory.length - 1];
             const prevCandle = candle1MinHistory[candle1MinHistory.length - 2];
@@ -1722,35 +1740,32 @@
 
             // BUY: Price crosses above Supertrend (Red to Green)
             if (!wasBullish && isBullish && lastCandle.close > supertrend) {
-                return { signal: 'BUY', message: 'Supertrend flip: Red to Green - Price above line!' };
+                return { signal: 'BUY', message: '✅ Supertrend flip: Red to Green - Price above line!' };
             }
 
             // SELL: Price crosses below Supertrend (Green to Red)
             if (wasBullish && !isBullish && lastCandle.close < supertrend) {
-                return { signal: 'SELL', message: 'Supertrend flip: Green to Red - Price below line!' };
+                return { signal: 'SELL', message: '✅ Supertrend flip: Green to Red - Price below line!' };
             }
 
-            return { signal: null, message: 'Waiting for Supertrend crossover...' };
+            return { signal: null, message: 'Monitoring for Supertrend crossover...' };
         }
 
         // The Bounce Strategy - Trend Continuation (1m Candles)
         function analyzeBounceStrategy() {
-            // Include current candle being built in the count
-            const totalCandles = candle1MinHistory.length + (currentCandle1Min.ticks > 0 ? 1 : 0);
-            
-            if (candle1MinHistory.length < 4) {
-                return { signal: null, message: `Collecting 1-min candles... ${totalCandles}/5 needed` };
+            if (candle1MinHistory.length < 5) {
+                return { signal: null, message: `Collecting 1-min candles... ${candle1MinHistory.length}/5 needed` };
             }
 
             const lastCandle = candle1MinHistory[candle1MinHistory.length - 1];
             const prevCandle = candle1MinHistory[candle1MinHistory.length - 2];
             
             // Detect trend using higher highs/lows or lower highs/lows
-            const isUptrend = detectHigherHighsHigherLows(candle1MinHistory.slice(-5));
-            const isDowntrend = detectLowerLowsLowerHighs(candle1MinHistory.slice(-5));
+            const recentCandles = candle1MinHistory.slice(-5);
+            const isUptrend = detectHigherHighsHigherLows(recentCandles);
+            const isDowntrend = detectLowerLowsLowerHighs(recentCandles);
             
             // Simple trendline estimation (connect recent lows for uptrend, highs for downtrend)
-            const recentCandles = candle1MinHistory.slice(-5);
             const trendlineSupport = Math.min(...recentCandles.map(c => c.low));
             const trendlineResistance = Math.max(...recentCandles.map(c => c.high));
             
@@ -1786,25 +1801,22 @@
             // BUY: Uptrend + Price touches support + Bullish pattern
             const touchingSupport = Math.abs(lastCandle.low - trendlineSupport) < (trendlineSupport * 0.002);
             if (isUptrend && touchingSupport && (isHammer || isBullishEngulfing)) {
-                return { signal: 'BUY', message: 'Bounce from uptrend support + Bullish pattern!' };
+                return { signal: 'BUY', message: '✅ Bounce from uptrend support + Bullish pattern!' };
             }
 
             // SELL: Downtrend + Price touches resistance + Bearish pattern
             const touchingResistance = Math.abs(lastCandle.high - trendlineResistance) < (trendlineResistance * 0.002);
             if (isDowntrend && touchingResistance && (isShootingStar || isBearishEngulfing)) {
-                return { signal: 'SELL', message: 'Bounce from downtrend resistance + Bearish pattern!' };
+                return { signal: 'SELL', message: '✅ Bounce from downtrend resistance + Bearish pattern!' };
             }
 
-            return { signal: null, message: 'Waiting for bounce confirmation...' };
+            return { signal: null, message: 'Monitoring for bounce confirmation...' };
         }
 
         // The Breakout Strategy - Trend Reversal (1m Candles)
         function analyzeBreakoutStrategy() {
-            // Include current candle being built in the count
-            const totalCandles = candle1MinHistory.length + (currentCandle1Min.ticks > 0 ? 1 : 0);
-            
-            if (candle1MinHistory.length < 4) {
-                return { signal: null, message: `Collecting 1-min candles... ${totalCandles}/5 needed` };
+            if (candle1MinHistory.length < 5) {
+                return { signal: null, message: `Collecting 1-min candles... ${candle1MinHistory.length}/5 needed` };
             }
 
             const lastCandle = candle1MinHistory[candle1MinHistory.length - 1];
@@ -1846,7 +1858,7 @@
             // BUY: Downtrend breaks above resistance
             if (wasDowntrend && lastCandle.close > downtrendResistance) {
                 if (highVolume || hasRetestSupport) {
-                    return { signal: 'BUY', message: 'Breakout above downtrend resistance! ' + 
+                    return { signal: 'BUY', message: '✅ Breakout above downtrend resistance! ' + 
                             (highVolume ? '(High volume)' : '(Retest confirmed)') };
                 }
                 return { signal: null, message: 'Breakout detected - waiting for volume/retest confirmation...' };
@@ -1855,13 +1867,13 @@
             // SELL: Uptrend breaks below support
             if (wasUptrend && lastCandle.close < uptrendSupport) {
                 if (highVolume || hasRetestResistance) {
-                    return { signal: 'SELL', message: 'Breakdown below uptrend support! ' + 
+                    return { signal: 'SELL', message: '✅ Breakdown below uptrend support! ' + 
                             (highVolume ? '(High volume)' : '(Retest confirmed)') };
                 }
                 return { signal: null, message: 'Breakdown detected - waiting for volume/retest confirmation...' };
             }
 
-            return { signal: null, message: 'Waiting for trendline break...' };
+            return { signal: null, message: 'Monitoring for trendline break...' };
         }
 
         function updateIndicatorDisplay(indicators) {
