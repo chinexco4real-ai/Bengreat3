@@ -1166,6 +1166,14 @@
 
         let tradeHistory = JSON.parse(localStorage.getItem('benScalperTradeHistory')) || [];
 
+        // Contract settlement tracking (NEW)
+        let activeContracts = new Map(); // contractId -> {details, startTime}
+        let contractTimeouts = new Map(); // contractId -> timeoutId
+        let portfolioCheckInterval = null;
+        const CONTRACT_TIMEOUT_MS = 90000; // 90 seconds
+        const PORTFOLIO_CHECK_MS = 30000; // 30 seconds
+        let isProcessingTrade = false; // FIXED: Prevent multiple simultaneous trades
+
         const availableMarkets = [
             { value: 'R_10', name: 'Volatility 10' },
             { value: 'R_25', name: 'Volatility 25' },
@@ -1486,6 +1494,9 @@
                         const market = selectedMarket ? selectedMarket.value : 'R_10';
                         subscribeToTicks(market);
                         
+                        // NEW: Start portfolio monitoring
+                        startPortfolioMonitoring();
+                        
                         resolve(data.authorize);
                     }
 
@@ -1501,6 +1512,18 @@
                         handleContractUpdate(data);
                     }
 
+                    // NEW: Handle portfolio response for stuck contract detection
+                    if (data.msg_type === 'portfolio') {
+                        const openContracts = data.portfolio.contracts || [];
+                        activeContracts.forEach((tracked, contractId) => {
+                            const stillOpen = openContracts.find(c => c.contract_id === contractId);
+                            if (!stillOpen) {
+                                addLog(`⚠️ Contract ${contractId} not in portfolio - may have settled`, 'warning');
+                                forceContractCheck(contractId);
+                            }
+                        });
+                    }
+
                     if (data.msg_type === 'tick') {
                         handleTickData(data);
                     }
@@ -1512,6 +1535,8 @@
 
                 ws.onclose = () => {
                     disableTradeButtons();
+                    stopPortfolioMonitoring(); // NEW: Stop monitoring on disconnect
+                    
                     if (!isExplicitLogout) {
                         updateConnectionStatus('reconnecting');
                         setTimeout(() => {
@@ -2304,6 +2329,13 @@
                     const cooldownSeconds = parseInt(document.getElementById('cooldownTimer').value) || 30;
                     const cooldownMs = cooldownSeconds * 1000;
                     
+                    // FIXED: Check if there are active contracts (one-entry mode)
+                    const oneEntryMode = document.getElementById('oneEntryMode').checked;
+                    if (oneEntryMode && activeContracts.size > 0) {
+                        // Skip trade - already have an active position
+                        return;
+                    }
+                    
                     if (tradeNow - lastTradeTime > cooldownMs) {
                         placeTrade(signal);
                         lastTradeTime = tradeNow;
@@ -2336,6 +2368,15 @@
                 addLog('Not connected to Deriv API', 'error');
                 return;
             }
+            
+            // FIXED: Prevent multiple simultaneous trade requests
+            if (isProcessingTrade) {
+                addLog('Trade already in progress, skipping...', 'warning');
+                return;
+            }
+            
+            isProcessingTrade = true;
+            
             const selectedMarket = document.querySelector('input[name="market"]:checked');
             const market = selectedMarket ? selectedMarket.value : 'R_10';
             const stake = parseFloat(document.getElementById('stakeAmount').value);
@@ -2359,25 +2400,54 @@
                     ws.removeEventListener('message', proposalHandler);
                     if (data.error) {
                         addLog(`Proposal error: ${data.error.message}`, 'error');
+                        isProcessingTrade = false; // FIXED: Reset flag on error
                         return;
                     }
                     ws.send(JSON.stringify({ buy: data.proposal.id, price: stake }));
+                    // Flag will be reset when we receive the 'buy' response
                 }
             };
             ws.addEventListener('message', proposalHandler);
-            setTimeout(() => { ws.removeEventListener('message', proposalHandler); }, 5000);
+            setTimeout(() => { 
+                ws.removeEventListener('message', proposalHandler); 
+                isProcessingTrade = false; // FIXED: Reset flag after timeout
+            }, 5000);
         }
 
         function handleBuyResponse(data) {
             if (data.buy) {
-                addLog(`Trade opened: Contract ID ${data.buy.contract_id}`, 'success');
-                ws.send(JSON.stringify({ proposal_open_contract: 1, contract_id: data.buy.contract_id, subscribe: 1 }));
+                const contractId = data.buy.contract_id;
+                addLog(`Trade opened: Contract ID ${contractId}`, 'success');
+                
+                // FIXED: Reset processing flag after successful trade
+                isProcessingTrade = false;
+                
+                // Subscribe to contract updates
+                ws.send(JSON.stringify({ proposal_open_contract: 1, contract_id: contractId, subscribe: 1 }));
+                
+                // Track the contract (NEW)
+                trackContract(contractId, {
+                    buyPrice: data.buy.buy_price,
+                    market: currentMarketSymbol,
+                    type: data.buy.contract_type,
+                    startTime: Date.now()
+                });
             }
         }
 
         function handleContractUpdate(data) {
             const contract = data.proposal_open_contract;
             if (!contract) return;
+            
+            const contractId = contract.contract_id;
+            
+            // Update tracked contract status (NEW)
+            if (activeContracts.has(contractId)) {
+                const tracked = activeContracts.get(contractId);
+                tracked.currentProfit = contract.profit;
+                tracked.status = contract.status;
+            }
+            
             if (contract.status === 'sold' || contract.is_sold) {
                 const profit = parseFloat(contract.profit);
                 const isWin = profit > 0;
@@ -2387,7 +2457,7 @@
                 updateStatsDisplay();
                 addTradeToHistory({
                     time: new Date().toLocaleTimeString(),
-                    market: document.getElementById('market').value,
+                    market: currentMarketSymbol || 'Unknown', // FIXED: Use currentMarketSymbol instead of non-existent element
                     type: contract.contract_type === 'CALL' ? 'RISE' : 'FALL',
                     stake: contract.buy_price,
                     result: profit,
@@ -2395,7 +2465,70 @@
                 });
                 addLog(`Trade closed: ${isWin ? 'WIN' : 'LOSS'} - P/L: ${profit.toFixed(2)}`, isWin ? 'success' : 'error');
                 
+                // Remove from tracking (NEW)
+                removeContract(contractId);
+                
                 checkRiskManagement();
+            }
+        }
+
+        // NEW: Track contract with timeout protection
+        function trackContract(contractId, details) {
+            activeContracts.set(contractId, { ...details, startTime: Date.now() });
+            addLog(`📍 Tracking contract: ${contractId}`, 'info');
+            
+            // Set timeout to force check if contract doesn't settle
+            const timeoutId = setTimeout(() => {
+                if (activeContracts.has(contractId)) {
+                    addLog(`⚠️ Contract timeout: ${contractId} - Forcing check`, 'warning');
+                    forceContractCheck(contractId);
+                }
+            }, CONTRACT_TIMEOUT_MS);
+            
+            contractTimeouts.set(contractId, timeoutId);
+        }
+
+        // NEW: Force check on potentially stuck contract
+        function forceContractCheck(contractId) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    proposal_open_contract: 1,
+                    contract_id: contractId
+                }));
+                addLog(`🔍 Force checking contract: ${contractId}`, 'info');
+            }
+        }
+
+        // NEW: Remove contract from tracking
+        function removeContract(contractId) {
+            if (contractTimeouts.has(contractId)) {
+                clearTimeout(contractTimeouts.get(contractId));
+                contractTimeouts.delete(contractId);
+            }
+            activeContracts.delete(contractId);
+            addLog(`✅ Contract removed from tracking: ${contractId}`, 'info');
+        }
+
+        // NEW: Start portfolio monitoring
+        function startPortfolioMonitoring() {
+            if (portfolioCheckInterval) return;
+            
+            portfolioCheckInterval = setInterval(() => {
+                if (activeContracts.size > 0 && ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ portfolio: 1 }));
+                    addLog(`🔄 Portfolio check - Active: ${activeContracts.size} contracts`, 'info');
+                }
+            }, PORTFOLIO_CHECK_MS);
+            
+            addLog('📊 Portfolio monitoring started', 'info');
+        }
+
+        // NEW: Stop portfolio monitoring  
+        function stopPortfolioMonitoring() {
+            if (portfolioCheckInterval) {
+                clearInterval(portfolioCheckInterval);
+                portfolioCheckInterval = null;
+                addLog('📊 Portfolio monitoring stopped', 'info');
             }
         }
 
@@ -2418,6 +2551,7 @@
             if (tradeHistory.length > 100) tradeHistory.pop();
             localStorage.setItem('benScalperTradeHistory', JSON.stringify(tradeHistory));
             updateTradeHistoryTable();
+            addLog(`📊 Trade added to history: ${trade.type} on ${trade.market}`, 'info');
         }
 
         function clearTradeHistory() {
@@ -2436,6 +2570,12 @@
 
         function logout() {
             stopAutoTrade();
+            stopPortfolioMonitoring(); // NEW
+            
+            // NEW: Clear all contract tracking
+            activeContracts.forEach((_, contractId) => removeContract(contractId));
+            activeContracts.clear();
+            
             isExplicitLogout = true;
             sessionToken = null;
             if (ws) ws.close();
@@ -2468,26 +2608,36 @@
 
         function updateTradeHistoryTable() {
             const tbody = document.getElementById('tradeHistoryBody');
+            if (!tbody) {
+                console.error('Trade history table body not found!');
+                return;
+            }
+            
             tbody.innerHTML = '';
             if (tradeHistory.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #9ca3af;">No trades yet</td></tr>';
                 return;
             }
             
-            tradeHistory.slice(0, 50).forEach((trade, index) => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${index + 1}</td>
-                    <td>${trade.time}</td>
-                    <td>${trade.market}</td>
-                    <td>${trade.type}</td>
-                    <td>${parseFloat(trade.stake).toFixed(2)}</td>
-                    <td class="${trade.isWin ? 'result-win' : 'result-loss'}">
-                        ${trade.isWin ? '+' : ''}${parseFloat(trade.result).toFixed(2)}
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
+            try {
+                tradeHistory.slice(0, 50).forEach((trade, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${trade.time || 'N/A'}</td>
+                        <td>${trade.market || 'N/A'}</td>
+                        <td>${trade.type || 'N/A'}</td>
+                        <td>${parseFloat(trade.stake || 0).toFixed(2)}</td>
+                        <td class="${trade.isWin ? 'result-win' : 'result-loss'}">
+                            ${trade.isWin ? '+' : ''}${parseFloat(trade.result || 0).toFixed(2)}
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                console.error('Error updating trade history table:', error);
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #ef4444;">Error displaying trade history</td></tr>';
+            }
         }
 
         function startAutoTrade() {
@@ -2706,6 +2856,9 @@
             loadSettings();
             updateStrategyDescription();
             addLog('Ben Scalper Bot initialized', 'success');
+            addLog('✅ Contract Settlement Monitoring: ENABLED', 'success');
+            addLog('✅ Timeout Protection: 90 seconds', 'info');
+            addLog('✅ Portfolio Fallback Checks: Every 30 seconds', 'info');
             addLog('✅ 3 Professional Trading Strategies loaded', 'success');
             addLog('  1. Super Trend (1m Candles)', 'info');
             addLog('  2. The Bounce Strategy (Trend Continuation)', 'info');
