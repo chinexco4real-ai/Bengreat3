@@ -2310,6 +2310,12 @@
             }
 
             let signal = result.signal;
+            const originalSignal = signal; // Store original before any modifications
+
+            // Log original signal
+            if (signal) {
+                addLog(`📊 Strategy Signal: ${signal} - ${result.message}`, 'info');
+            }
 
             // Apply One Entry Per Setup filter
             const oneEntryEnabled = document.getElementById('oneEntryMode').checked;
@@ -2318,6 +2324,7 @@
                 const timeSinceLastSetup = Date.now() - lastSetupDetectedTime;
                 
                 if (timeSinceLastSetup < 60000 && currentSetupId === setupId) {
+                    addLog(`🔒 One Entry Per Setup: Signal blocked (waiting for new setup)`, 'warning');
                     updateSignalUI('NONE', 'One Entry Per Setup: Waiting for new setup...');
                     return null;
                 }
@@ -2325,23 +2332,29 @@
                 if (signal) {
                     currentSetupId = setupId;
                     lastSetupDetectedTime = Date.now();
+                    addLog(`✓ One Entry Per Setup: Allowed (new setup detected)`, 'info');
                 }
             }
 
-            // Apply Reverse Mode
+            // FIXED: Apply Reverse Mode FIRST (before alternator)
             const reverseModeEnabled = document.getElementById('reverseMode').checked;
             if (reverseModeEnabled && signal) {
+                const beforeReverse = signal;
                 signal = signal === 'BUY' ? 'SELL' : 'BUY';
                 result.message += ' (Reversed)';
+                addLog(`🔁 Reverse Mode: ${beforeReverse} → ${signal}`, 'info');
             }
 
-            // Apply Alternator Mode
+            // FIXED: Apply Alternator Mode AFTER Reverse (checks final signal)
             const alternatorEnabled = document.getElementById('alternatorMode').checked;
             if (alternatorEnabled && signal) {
                 if (lastExecutedTradeType !== null && signal === lastExecutedTradeType) {
                     const expectedSignal = lastExecutedTradeType === 'BUY' ? 'SELL' : 'BUY';
+                    addLog(`🔄 Alternator Mode: ${signal} blocked (last trade was ${lastExecutedTradeType}, waiting for ${expectedSignal})`, 'warning');
                     updateSignalUI('NONE', `Alternator Mode: Waiting for ${expectedSignal} signal`);
                     return null;
+                } else {
+                    addLog(`✓ Alternator Mode: ${signal} allowed (last: ${lastExecutedTradeType || 'None'})`, 'info');
                 }
             }
 
@@ -2351,10 +2364,12 @@
                 const adx = strategyIndicators.adx || 0;
                 
                 if (adx < 20) {
+                    addLog(`📉 ADX Filter: ${signal} blocked (ADX: ${adx.toFixed(1)} < 20 - market ranging)`, 'warning');
                     updateSignalUI('NONE', `ADX Filter: Market ranging (ADX: ${adx.toFixed(1)} < 20) - Signal blocked`);
                     return null;
                 }
                 
+                addLog(`✓ ADX Filter: Passed (ADX: ${adx.toFixed(1)} ≥ 20)`, 'info');
                 result.message += ` | ADX: ${adx.toFixed(1)} ✓`;
             }
 
@@ -2366,31 +2381,38 @@
                 // BUY filter: RSI must be > 50 and not overbought (< 70)
                 if (signal === 'BUY') {
                     if (rsi <= 50) {
+                        addLog(`📊 RSI Filter: BUY blocked (RSI: ${rsi.toFixed(1)} ≤ 50 - bearish momentum)`, 'warning');
                         updateSignalUI('NONE', `RSI Filter: BUY blocked - RSI ${rsi.toFixed(1)} ≤ 50 (bearish momentum)`);
                         return null;
                     }
                     if (rsi >= 70) {
+                        addLog(`📊 RSI Filter: BUY blocked (RSI: ${rsi.toFixed(1)} ≥ 70 - overbought)`, 'warning');
                         updateSignalUI('NONE', `RSI Filter: BUY blocked - RSI ${rsi.toFixed(1)} ≥ 70 (overbought)`);
                         return null;
                     }
+                    addLog(`✓ RSI Filter: BUY allowed (RSI: ${rsi.toFixed(1)})`, 'info');
                 }
                 
                 // SELL filter: RSI must be < 50 and not oversold (> 30)
                 if (signal === 'SELL') {
                     if (rsi >= 50) {
+                        addLog(`📊 RSI Filter: SELL blocked (RSI: ${rsi.toFixed(1)} ≥ 50 - bullish momentum)`, 'warning');
                         updateSignalUI('NONE', `RSI Filter: SELL blocked - RSI ${rsi.toFixed(1)} ≥ 50 (bullish momentum)`);
                         return null;
                     }
                     if (rsi <= 30) {
+                        addLog(`📊 RSI Filter: SELL blocked (RSI: ${rsi.toFixed(1)} ≤ 30 - oversold)`, 'warning');
                         updateSignalUI('NONE', `RSI Filter: SELL blocked - RSI ${rsi.toFixed(1)} ≤ 30 (oversold)`);
                         return null;
                     }
+                    addLog(`✓ RSI Filter: SELL allowed (RSI: ${rsi.toFixed(1)})`, 'info');
                 }
                 
                 result.message += ` | RSI: ${rsi.toFixed(1)} ✓`;
             }
 
             if (signal) {
+                addLog(`✅ Final Signal: ${signal} (Original: ${originalSignal})`, 'success');
                 updateSignalUI(signal, result.message);
                 return signal;
             }
@@ -2532,10 +2554,25 @@
                     }
                     
                     if (tradeNow - lastTradeTime > cooldownMs) {
+                        const reverseModeEnabled = document.getElementById('reverseMode').checked;
+                        const alternatorEnabled = document.getElementById('alternatorMode').checked;
+                        
+                        addLog(`🎯 Executing Trade: ${signal}`, 'success');
+                        if (reverseModeEnabled) {
+                            addLog(`   └─ Reverse Mode: Active (original signal was opposite)`, 'info');
+                        }
+                        if (alternatorEnabled) {
+                            addLog(`   └─ Alternator Mode: Enforcing alternation (last: ${lastExecutedTradeType || 'None'})`, 'info');
+                        }
+                        
                         placeTrade(signal);
                         lastTradeTime = tradeNow;
-                        lastExecutedTradeType = signal;
-                        addLog(`Auto-trade executing ${signal}. Cooldown started (${cooldownSeconds}s)...`, 'info');
+                        lastExecutedTradeType = signal; // Track the final executed signal
+                        
+                        addLog(`⏱️ Cooldown: ${cooldownSeconds}s started`, 'info');
+                    } else {
+                        const remainingCooldown = Math.ceil((cooldownMs - (tradeNow - lastTradeTime)) / 1000);
+                        addLog(`⏸️ Cooldown active: ${remainingCooldown}s remaining`, 'warning');
                     }
                 }
             }
@@ -2861,13 +2898,28 @@
             addLog(`Auto trade started with ${strategyName} (Cooldown: ${cooldownSeconds}s)`, 'success');
             
             if (alternatorEnabled) {
-                addLog(`Alternator Mode: Active - Enforcing Buy-Sell alternation`, 'info');
+                addLog(`🔄 Alternator Mode: Active - Enforcing Buy-Sell alternation`, 'success');
             }
             if (reverseModeEnabled) {
-                addLog(`Reverse Mode: Active - Signals inverted (Buy↔Sell)`, 'info');
+                addLog(`🔁 Reverse Mode: Active - Signals inverted (Buy↔Sell)`, 'success');
             }
             if (oneEntryEnabled) {
-                addLog(`One Entry Per Setup: Active - Only one trade per pattern`, 'info');
+                addLog(`🔒 One Entry Per Setup: Active - Only one trade per pattern`, 'success');
+            }
+            
+            // Log filter status
+            const adxFilterEnabled = document.getElementById('adxFilterMode').checked;
+            const rsiFilterEnabled = document.getElementById('rsiFilterMode').checked;
+            
+            if (adxFilterEnabled) {
+                addLog(`📉 ADX Filter: Active - Only trading when ADX > 20`, 'success');
+            }
+            if (rsiFilterEnabled) {
+                addLog(`📊 RSI Filter: Active - Checking momentum direction`, 'success');
+            }
+            
+            if (!alternatorEnabled && !reverseModeEnabled && !oneEntryEnabled && !adxFilterEnabled && !rsiFilterEnabled) {
+                addLog(`⚠️ No filters active - Trading all strategy signals`, 'warning');
             }
         }
 
@@ -3001,6 +3053,51 @@
         document.getElementById('stopAutoTradeBtn').addEventListener('click', () => {
             stopAutoTrade();
             addLog('Stop Auto Trade button clicked', 'info');
+        });
+
+        // NEW: Event listeners for mode toggles with logging
+        document.getElementById('alternatorMode').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                addLog('🔄 Alternator Mode: ENABLED - Will enforce BUY/SELL alternation', 'success');
+                if (lastExecutedTradeType) {
+                    const nextExpected = lastExecutedTradeType === 'BUY' ? 'SELL' : 'BUY';
+                    addLog(`   └─ Last trade: ${lastExecutedTradeType} | Next allowed: ${nextExpected}`, 'info');
+                }
+            } else {
+                addLog('🔄 Alternator Mode: DISABLED', 'warning');
+            }
+        });
+
+        document.getElementById('reverseMode').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                addLog('🔁 Reverse Mode: ENABLED - All signals will be inverted (BUY↔SELL)', 'success');
+            } else {
+                addLog('🔁 Reverse Mode: DISABLED', 'warning');
+            }
+        });
+
+        document.getElementById('oneEntryMode').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                addLog('🔒 One Entry Per Setup: ENABLED - Only one trade per pattern', 'success');
+            } else {
+                addLog('🔒 One Entry Per Setup: DISABLED', 'warning');
+            }
+        });
+
+        document.getElementById('adxFilterMode').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                addLog('📉 ADX Filter: ENABLED - Only trading when ADX > 20 (strong trend)', 'success');
+            } else {
+                addLog('📉 ADX Filter: DISABLED', 'warning');
+            }
+        });
+
+        document.getElementById('rsiFilterMode').addEventListener('change', (e) => {
+            if (e.target.checked) {
+                addLog('📊 RSI Filter: ENABLED - Checking momentum direction (BUY: RSI>50, SELL: RSI<50)', 'success');
+            } else {
+                addLog('📊 RSI Filter: DISABLED', 'warning');
+            }
         });
 
         // Double-click logout with visual feedback
