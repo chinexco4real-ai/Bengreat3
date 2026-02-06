@@ -683,8 +683,21 @@
         }
 
         .scroll-container {
-            max-height: 400px;
+            max-height: 380px; /* FIXED: Limits to ~10 rows visible, rest scrollable */
             overflow-y: auto;
+            position: relative;
+        }
+        
+        /* FIXED: Add fade effect at bottom to indicate more content */
+        .scroll-container::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(to bottom, transparent, rgba(15, 20, 25, 0.95));
+            pointer-events: none;
         }
 
         .scroll-container::-webkit-scrollbar,
@@ -1125,7 +1138,7 @@
 
             <div class="trade-history" id="tradeHistory">
                 <div class="trade-history-header">
-                    <h3>📜 Trade History</h3>
+                    <h3>📜 Trade History <span id="tradeCount" style="font-size: 14px; color: #667eea; font-weight: normal;">(0)</span></h3>
                     <button id="clearHistoryBtn" class="btn btn-secondary btn-sm">Clear History</button>
                 </div>
                 <div class="scroll-container">
@@ -1473,6 +1486,12 @@
             document.getElementById('buyBtn').disabled = false;
             document.getElementById('sellBtn').disabled = false;
             document.getElementById('autoTradeBtn').disabled = false;
+            
+            // FIXED: Enable stop button if auto-trading is active
+            if (isAutoTrading) {
+                document.getElementById('stopAutoTradeBtn').disabled = false;
+            }
+            
             addLog('Trade buttons enabled', 'info');
         }
 
@@ -1480,7 +1499,12 @@
             document.getElementById('buyBtn').disabled = true;
             document.getElementById('sellBtn').disabled = true;
             document.getElementById('autoTradeBtn').disabled = true;
-            document.getElementById('stopAutoTradeBtn').disabled = true;
+            
+            // FIXED: Don't disable stop button if auto-trading is active
+            if (!isAutoTrading) {
+                document.getElementById('stopAutoTradeBtn').disabled = true;
+            }
+            
             addLog('Trade buttons disabled', 'info');
         }
 
@@ -2784,6 +2808,12 @@
                 return;
             }
             
+            // FIXED: Update trade count display
+            const tradeCountEl = document.getElementById('tradeCount');
+            if (tradeCountEl) {
+                tradeCountEl.textContent = `(${tradeHistory.length})`;
+            }
+            
             tbody.innerHTML = '';
             if (tradeHistory.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #9ca3af;">No trades yet</td></tr>';
@@ -2847,6 +2877,19 @@
             document.getElementById('stopAutoTradeBtn').style.display = 'none';
             addLog('Auto trade stopped', 'info');
         }
+
+        // NEW: Periodic button state validator to fix stuck disabled state
+        setInterval(() => {
+            if (isAutoTrading) {
+                const stopBtn = document.getElementById('stopAutoTradeBtn');
+                // Ensure stop button is visible and enabled during auto-trading
+                if (stopBtn.style.display === 'none' || stopBtn.disabled) {
+                    stopBtn.style.display = 'inline-flex';
+                    stopBtn.disabled = false;
+                    addLog('🔧 Stop button state corrected', 'warning');
+                }
+            }
+        }, 5000); // Check every 5 seconds
 
         // Integrity check function
         function performIntegrityCheck() {
