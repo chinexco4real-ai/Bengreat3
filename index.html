@@ -601,8 +601,29 @@
         /* Trade History */
         .table-container {
             overflow-x: auto;
-            max-height: 400px;
+            max-height: 420px; /* Approximately 10.5 rows visible to hint at scrolling */
             overflow-y: auto;
+            border: 1px solid #2d3561;
+            border-radius: 6px;
+        }
+
+        /* Custom scrollbar for trade history */
+        .table-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .table-container::-webkit-scrollbar-track {
+            background: #1a1d3a;
+            border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb {
+            background: #4fc3f7;
+            border-radius: 4px;
+        }
+
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #2196f3;
         }
 
         table {
@@ -1964,6 +1985,12 @@
             };
             
             tradeHistory.unshift(trade);
+            
+            // Cap trade history at 500 trades maximum
+            if (tradeHistory.length > 500) {
+                tradeHistory = tradeHistory.slice(0, 500);
+            }
+            
             updateTradeHistory();
             
             // Subscribe to contract updates
@@ -1996,14 +2023,14 @@
         // Update Trade History
         function updateTradeHistory() {
             const tbody = document.getElementById('tradeHistoryBody');
-            const displayTrades = tradeHistory.slice(0, 10);
             
-            if (displayTrades.length === 0) {
+            if (tradeHistory.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #888;">No trades yet</td></tr>';
                 return;
             }
             
-            tbody.innerHTML = displayTrades.map(trade => `
+            // Display ALL trades (up to 500) - CSS scrolling will show ~10 visible
+            tbody.innerHTML = tradeHistory.map(trade => `
                 <tr>
                     <td>${trade.sn}</td>
                     <td>${trade.time}</td>
