@@ -911,6 +911,22 @@
                             <input type="number" id="stakeAmount" value="1" step="0.1" min="0.1" onchange="saveSettings()">
                         </div>
                         <div class="setting-item">
+                            <label>Candle Period</label>
+                            <div class="radio-group">
+                                <label class="radio-item">
+                                    <input type="radio" name="candlePeriod" value="30" onchange="changeCandlePeriod()">
+                                    <span>30 Sec</span>
+                                </label>
+                                <label class="radio-item">
+                                    <input type="radio" name="candlePeriod" value="60" checked onchange="changeCandlePeriod()">
+                                    <span>1 Min</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-grid">
+                        <div class="setting-item">
                             <label>Trade Duration Type</label>
                             <div class="radio-group">
                                 <label class="radio-item">
@@ -1026,8 +1042,14 @@
         let sessionStartTime = null;
         let timerInterval = null;
         let candleData = [];
-        let tickSubscription = null;
         let candleSubscription = null;
+        let currentCandleSymbol = null; // Track currently subscribed symbol
+        
+        // Live tick-to-candle conversion variables
+        let currentCandle = null; // Currently building candle
+        let candleStartTime = null; // When current candle started
+        let candlePeriod = 60; // Default: 60 seconds = 1 minute candles (can be 30 or 60)
+        
         let isAutoTrading = false;
         let currentSignal = 'NONE';
         let tradeHistory = [];
@@ -1073,7 +1095,8 @@
             marketSymbol: 'R_10',
             stakeAmount: 1,
             durationType: 't',
-            tradeDuration: 5
+            tradeDuration: 5,
+            candlePeriod: 60  // Default to 1-minute candles
         };
 
         // Initialize on load
@@ -1275,8 +1298,7 @@
             if (data.authorize) {
                 accountInfo = data.authorize;
                 updateAccountInfo();
-                subscribeToCandles();
-                subscribeToTicks();
+                subscribeToCandles(); // This now subscribes to live ticks for both price and candle building
                 enableTrading();
             }
 
@@ -1286,23 +1308,34 @@
                     data.balance.balance + ' ' + data.balance.currency;
             }
 
-            // Tick update (for current price)
+            // Tick update (for current price AND candle building)
             if (data.tick) {
-                // Capture subscription ID
-                if (data.subscription && data.subscription.id) {
-                    tickSubscription = data.subscription.id;
+                const tickPrice = data.tick.quote;
+                const tickTime = data.tick.epoch;
+                const tickSymbol = data.tick.symbol;
+                
+                // CRITICAL FIX: Only process ticks from the CURRENT subscribed symbol
+                // Ignore ticks from old subscriptions that haven't been cleaned up yet
+                if (tickSymbol !== currentCandleSymbol) {
+                    // This is from an old subscription, ignore it silently
+                    // (The forget command will eventually stop these)
+                    return;
                 }
-                currentPrice = data.tick.quote;
+                
+                // Capture subscription ID on first tick from current symbol
+                if (data.subscription && data.subscription.id) {
+                    if (!candleSubscription) {
+                        candleSubscription = data.subscription.id;
+                        logActivity('Live tick subscription confirmed: ' + marketNames[currentCandleSymbol], 'success');
+                    }
+                }
+                
+                // Update current price display
+                currentPrice = tickPrice;
                 document.getElementById('currentMarketPrice').textContent = currentPrice.toFixed(2);
-            }
-
-            // Candles data
-            if (data.candles) {
-                // Capture subscription ID
-                if (data.subscription && data.subscription.id) {
-                    candleSubscription = data.subscription.id;
-                }
-                processCandleData(data.candles);
+                
+                // Build candles from live ticks
+                processLiveTick(tickPrice, tickTime);
             }
 
             // Proposal response
@@ -1347,25 +1380,7 @@
         }
 
         // Subscribe to Ticks for current price
-        function subscribeToTicks() {
-            const symbol = settings.marketSymbol;
-            
-            // Unsubscribe from previous tick stream
-            if (tickSubscription) {
-                ws.send(JSON.stringify({
-                    forget: tickSubscription
-                }));
-                logActivity('Unsubscribed from previous tick stream', 'info');
-            }
-            
-            // Subscribe to new tick stream
-            ws.send(JSON.stringify({
-                ticks: symbol,
-                subscribe: 1
-            }));
-            
-            logActivity('Subscribed to ' + marketNames[symbol] + ' price ticks', 'info');
-        }
+        // Note: subscribeToTicks is no longer needed - subscribeToCandles handles everything
 
         // Update Account Info
         function updateAccountInfo() {
@@ -1389,86 +1404,114 @@
         function subscribeToCandles() {
             const symbol = settings.marketSymbol;
             
-            // Unsubscribe from previous candle stream
-            if (candleSubscription) {
+            // Don't resubscribe if already subscribed to this symbol
+            if (currentCandleSymbol === symbol && candleSubscription) {
+                logActivity('Already subscribed to ' + marketNames[symbol] + ' live ticks', 'info');
+                return;
+            }
+            
+            // Unsubscribe from previous stream if exists
+            if (candleSubscription && currentCandleSymbol) {
                 ws.send(JSON.stringify({
                     forget: candleSubscription
                 }));
-                logActivity('Unsubscribed from previous candle stream', 'info');
+                logActivity('Unsubscribing from ' + marketNames[currentCandleSymbol] + '...', 'info');
+                
+                // CRITICAL: Clear subscription ID and symbol IMMEDIATELY
+                // This prevents processing ticks from old symbol before forget completes
+                const oldSubscription = candleSubscription;
+                candleSubscription = null;
+                currentCandleSymbol = null;
+                
+                // Clear candle data when changing symbols
+                candleData = [];
+                currentCandle = null;
+                candleStartTime = null;
             }
             
-            // Get initial historical candles
+            // Show LOADING status immediately
+            const signalElement = document.getElementById('signalValue');
+            const detailsElement = document.getElementById('signalDetails');
+            const progressContainer = document.getElementById('progressContainer');
+            
+            signalElement.textContent = 'LOADING...';
+            signalElement.className = 'signal-value none';
+            detailsElement.textContent = 'Building candles from live ticks...';
+            progressContainer.classList.add('active');
+            
+            // Set the current symbol BEFORE subscribing
+            // This ensures tick handler knows which symbol to accept
+            currentCandleSymbol = symbol;
+            
+            // Subscribe to live ticks ONLY (no historical data)
             ws.send(JSON.stringify({
-                ticks_history: symbol,
-                adjust_start_time: 1,
-                count: 100,
-                end: 'latest',
-                granularity: 60,
-                style: 'candles'
+                ticks: symbol,
+                subscribe: 1
             }));
 
-            // Subscribe to live candles
-            ws.send(JSON.stringify({
-                ticks_history: symbol,
-                subscribe: 1,
-                end: 'latest',
-                count: 1,
-                granularity: 60,
-                style: 'candles'
-            }));
-
-            logActivity('Subscribed to ' + marketNames[symbol] + ' candles', 'info');
+            logActivity('Subscribing to ' + marketNames[symbol] + ' live ticks for real-time candle building...', 'info');
         }
 
-        // Process Candle Data
-        function processCandleData(candles) {
-            if (!candles || candles.length === 0) return;
-
-            // Update candle data
-            if (Array.isArray(candles)) {
-                candleData = candles.map(c => ({
-                    time: c.epoch,
-                    open: parseFloat(c.open),
-                    high: parseFloat(c.high),
-                    low: parseFloat(c.low),
-                    close: parseFloat(c.close)
-                }));
-            } else {
-                // Single candle update
-                const newCandle = {
-                    time: candles.epoch,
-                    open: parseFloat(candles.open),
-                    high: parseFloat(candles.high),
-                    low: parseFloat(candles.low),
-                    close: parseFloat(candles.close)
-                };
-                
-                // Update or add candle
-                const existingIndex = candleData.findIndex(c => c.time === newCandle.time);
-                if (existingIndex >= 0) {
-                    candleData[existingIndex] = newCandle;
-                } else {
-                    candleData.push(newCandle);
+        // Process Live Tick and Build Candles
+        function processLiveTick(price, timestamp) {
+            // Calculate which candle period this tick belongs to
+            const candlePeriodStart = Math.floor(timestamp / candlePeriod) * candlePeriod;
+            
+            // Check if we need to start a new candle
+            if (!currentCandle || candlePeriodStart !== candleStartTime) {
+                // If we have a completed candle, add it to history
+                if (currentCandle) {
+                    candleData.push(currentCandle);
+                    
+                    // Keep only last 100 candles
                     if (candleData.length > 100) {
                         candleData.shift();
                     }
+                    
+                    // Only log every 10 candles or important milestones to avoid flooding
+                    const candleType = candlePeriod === 30 ? '30-sec' : '1-min';
+                    if (candleData.length % 10 === 0 || candleData.length <= 20) {
+                        logActivity('Candle #' + candleData.length + ' completed (' + candleType + ')', 'info');
+                    }
                 }
+                
+                // Start new candle (silently - no log spam)
+                currentCandle = {
+                    time: candlePeriodStart,
+                    open: price,
+                    high: price,
+                    low: price,
+                    close: price
+                };
+                candleStartTime = candlePeriodStart;
+            } else {
+                // Update current candle with new tick
+                currentCandle.high = Math.max(currentCandle.high, price);
+                currentCandle.low = Math.min(currentCandle.low, price);
+                currentCandle.close = price;
             }
-
-            // Calculate strategy
+            
+            // Run strategy calculation with current data
             calculateStrategy();
         }
 
         // Calculate SuperTrend Strategy
         function calculateStrategy() {
-            const requiredLength = Math.max(settings.stPeriod, settings.adxPeriod, settings.rsiPeriod) + 1;
+            // Base requirement: period + 1 for ATR, +1 for first ST, +1 for signal flip = period + 3
+            let requiredLength = settings.stPeriod + 3;
+            
+            if (settings.adxEnabled) {
+                requiredLength = Math.max(requiredLength, settings.adxPeriod + 2);
+            }
+            
+            if (settings.rsiEnabled) {
+                requiredLength = Math.max(requiredLength, settings.rsiPeriod + 2);
+            }
             
             if (candleData.length < requiredLength) {
-                // Calculate progress percentage
                 const progress = Math.floor((candleData.length / requiredLength) * 100);
                 const remaining = requiredLength - candleData.length;
                 
-                // Update signal display with loading status
                 const signalElement = document.getElementById('signalValue');
                 const detailsElement = document.getElementById('signalDetails');
                 const progressContainer = document.getElementById('progressContainer');
@@ -1477,116 +1520,98 @@
                 
                 signalElement.textContent = 'LOADING...';
                 signalElement.className = 'signal-value none';
-                detailsElement.innerHTML = `
-                    Collecting candle data for strategy analysis
-                `;
                 
-                // Show and update progress bar
+                // Show which filters are enabled
+                let filterInfo = '';
+                if (settings.adxEnabled || settings.rsiEnabled) {
+                    const enabledFilters = [];
+                    if (settings.adxEnabled) enabledFilters.push('ADX');
+                    if (settings.rsiEnabled) enabledFilters.push('RSI');
+                    filterInfo = ' | Filters: ' + enabledFilters.join(', ');
+                } else {
+                    filterInfo = ' | No filters';
+                }
+                
+                detailsElement.innerHTML = `Collecting live data...${filterInfo}`;
                 progressContainer.classList.add('active');
                 progressFill.style.width = progress + '%';
                 progressText.textContent = `${candleData.length} / ${requiredLength} candles (${remaining} more needed)`;
                 
-                // Log only when it's a new message (to avoid spam)
+                // Log progress
                 if (candleData.length % 5 === 0 || candleData.length === 1) {
-                    logActivity('Collecting candle data: ' + candleData.length + '/' + requiredLength + ' (' + progress + '%)', 'info');
+                    logActivity('Collecting candles: ' + candleData.length + '/' + requiredLength + ' (' + progress + '%)' + filterInfo, 'info');
                 }
                 return;
             }
             
-            // Hide progress bar once we have enough data
             const progressContainer = document.getElementById('progressContainer');
-            if (progressContainer) {
-                progressContainer.classList.remove('active');
-            }
+            if (progressContainer) progressContainer.classList.remove('active');
 
-            // Calculate ATR
             const atr = calculateATR(candleData, settings.stPeriod);
-            
-            // Validate ATR calculation
-            if (!atr || atr.length === 0) {
-                logActivity('ATR calculation failed', 'error');
-                return;
-            }
-            
-            // Calculate SuperTrend
             const superTrend = calculateSuperTrend(candleData, settings.stPeriod, settings.stMultiplier, atr);
             
-            // Validate SuperTrend calculation
+            // Now SuperTrend will have sufficient length by candle 13-14
             if (!superTrend || superTrend.length < 2) {
-                logActivity('SuperTrend calculation insufficient data', 'error');
+                logActivity('SuperTrend has ' + (superTrend ? superTrend.length : 0) + ' values, need 2 minimum', 'info');
                 return;
             }
             
-            // Get current trend
             const currentTrend = superTrend[superTrend.length - 1];
             const previousTrend = superTrend[superTrend.length - 2];
             
-            // Detect signal
             let signal = 'NONE';
             let signalDetails = '';
             
-            if (previousTrend && currentTrend) {
-                if (previousTrend.trend === 'DOWN' && currentTrend.trend === 'UP') {
-                    signal = 'BUY';
-                    signalDetails = 'SuperTrend flipped to Bullish';
-                } else if (previousTrend.trend === 'UP' && currentTrend.trend === 'DOWN') {
-                    signal = 'SELL';
-                    signalDetails = 'SuperTrend flipped to Bearish';
-                }
+            if (previousTrend.trend === 'DOWN' && currentTrend.trend === 'UP') {
+                signal = 'BUY';
+                signalDetails = 'SuperTrend Bullish Flip';
+            } else if (previousTrend.trend === 'UP' && currentTrend.trend === 'DOWN') {
+                signal = 'SELL';
+                signalDetails = 'SuperTrend Bearish Flip';
             }
 
-            // Apply Filters
+            // Filters
             if (signal !== 'NONE') {
-                // ADX Filter
                 if (settings.adxEnabled) {
                     const adx = calculateADX(candleData, settings.adxPeriod);
-                    
-                    // Validate ADX calculation
                     if (!adx || adx.length === 0) {
                         signal = 'NONE';
-                        signalDetails = 'Signal filtered: ADX calculation failed';
+                        signalDetails = 'Filtered: ADX calculation failed';
                     } else {
                         const currentADX = adx[adx.length - 1];
-                        
-                        if (currentADX < settings.adxThreshold) {
+                        if (!currentADX || currentADX < settings.adxThreshold) {
                             signal = 'NONE';
-                            signalDetails = 'Signal filtered: ADX too low (' + currentADX.toFixed(2) + ')';
+                            signalDetails = 'Filtered: Weak ADX (' + (currentADX ? currentADX.toFixed(2) : '0') + ')';
                         } else {
                             signalDetails += ' | ADX: ' + currentADX.toFixed(2);
                         }
                     }
                 }
 
-                // RSI Filter
                 if (settings.rsiEnabled && signal !== 'NONE') {
                     const rsi = calculateRSI(candleData, settings.rsiPeriod);
-                    
-                    // Validate RSI calculation
                     if (!rsi || rsi.length === 0) {
                         signal = 'NONE';
-                        signalDetails = 'Signal filtered: RSI calculation failed';
+                        signalDetails = 'Filtered: RSI calculation failed';
                     } else {
                         const currentRSI = rsi[rsi.length - 1];
-                        
-                        // Fixed logic: For BUY signals, we want RSI > 50 (bullish) but not overbought (>70)
-                        // For SELL signals, we want RSI < 50 (bearish) but not oversold (<30)
                         if (signal === 'BUY') {
                             if (currentRSI > 70) {
                                 signal = 'NONE';
-                                signalDetails = 'BUY filtered: RSI overbought (' + currentRSI.toFixed(2) + ')';
+                                signalDetails = 'Filtered: RSI Overbought (' + currentRSI.toFixed(2) + ')';
                             } else if (currentRSI <= 50) {
                                 signal = 'NONE';
-                                signalDetails = 'BUY filtered: RSI not bullish (' + currentRSI.toFixed(2) + ')';
+                                signalDetails = 'Filtered: RSI Not Bullish (' + currentRSI.toFixed(2) + ')';
                             } else {
                                 signalDetails += ' | RSI: ' + currentRSI.toFixed(2);
                             }
                         } else if (signal === 'SELL') {
                             if (currentRSI < 30) {
                                 signal = 'NONE';
-                                signalDetails = 'SELL filtered: RSI oversold (' + currentRSI.toFixed(2) + ')';
+                                signalDetails = 'Filtered: RSI Oversold (' + currentRSI.toFixed(2) + ')';
                             } else if (currentRSI >= 50) {
                                 signal = 'NONE';
-                                signalDetails = 'SELL filtered: RSI not bearish (' + currentRSI.toFixed(2) + ')';
+                                signalDetails = 'Filtered: RSI Not Bearish (' + currentRSI.toFixed(2) + ')';
                             } else {
                                 signalDetails += ' | RSI: ' + currentRSI.toFixed(2);
                             }
@@ -1594,13 +1619,11 @@
                     }
                 }
             } else {
-                signalDetails = 'Trend: ' + (currentTrend ? currentTrend.trend : 'Unknown');
+                signalDetails = 'Trend: ' + currentTrend.trend;
             }
 
-            // Update signal display
             updateSignalDisplay(signal, signalDetails);
 
-            // Auto trade if enabled
             if (isAutoTrading && signal !== 'NONE' && signal !== currentSignal) {
                 logActivity('New signal detected: ' + signal + ' (Previous: ' + currentSignal + ')', 'info');
                 const tradeType = signal === 'BUY' ? 'CALL' : 'PUT';
@@ -1650,44 +1673,36 @@
         function calculateSuperTrend(candles, period, multiplier, atr) {
             const superTrend = [];
             
-            for (let i = period; i < candles.length; i++) {
-                const candle = candles[i];
-                // Fix: ATR array is offset by 1 because TR calculation starts at index 1
-                // ATR index should be (i - 1) for the TR array, which starts at candle index 1
-                const atrIndex = i - 1;
-                
-                // Ensure we don't access out of bounds
-                if (atrIndex >= atr.length) {
-                    continue;
-                }
-                
+            for (let i = 0; i < candles.length; i++) {
+                // We need at least 'period' candles to have an ATR value
+                const atrIndex = i - period + 1;
                 const atrValue = atr[atrIndex];
-                const midPrice = (candle.high + candle.low) / 2;
                 
+                if (atrValue === undefined) continue;
+
+                const candle = candles[i];
+                const midPrice = (candle.high + candle.low) / 2;
                 const basicUpper = midPrice + (multiplier * atrValue);
                 const basicLower = midPrice - (multiplier * atrValue);
                 
                 let finalUpper, finalLower, trend;
                 
-                if (i === period) {
+                if (superTrend.length === 0) {
                     finalUpper = basicUpper;
                     finalLower = basicLower;
                     trend = candle.close > finalUpper ? 'UP' : 'DOWN';
                 } else {
                     const prev = superTrend[superTrend.length - 1];
                     
-                    if (basicUpper < prev.finalUpper || candles[i - 1].close > prev.finalUpper) {
-                        finalUpper = basicUpper;
-                    } else {
-                        finalUpper = prev.finalUpper;
-                    }
+                    // Logic for Upper Band
+                    finalUpper = (basicUpper < prev.finalUpper || candles[i-1].close > prev.finalUpper) 
+                                 ? basicUpper : prev.finalUpper;
                     
-                    if (basicLower > prev.finalLower || candles[i - 1].close < prev.finalLower) {
-                        finalLower = basicLower;
-                    } else {
-                        finalLower = prev.finalLower;
-                    }
+                    // Logic for Lower Band
+                    finalLower = (basicLower > prev.finalLower || candles[i-1].close < prev.finalLower) 
+                                 ? basicLower : prev.finalLower;
                     
+                    // Trend Switching Logic - flip happens when price crosses the band
                     if (prev.trend === 'UP') {
                         trend = candle.close < finalLower ? 'DOWN' : 'UP';
                     } else {
@@ -1695,14 +1710,13 @@
                     }
                 }
                 
-                superTrend.push({
-                    finalUpper,
-                    finalLower,
+                superTrend.push({ 
+                    finalUpper, 
+                    finalLower, 
                     trend,
                     activeLine: trend === 'UP' ? finalLower : finalUpper
                 });
             }
-            
             return superTrend;
         }
 
@@ -2000,8 +2014,7 @@
             saveSettings();
             
             if (ws && ws.readyState === WebSocket.OPEN) {
-                subscribeToCandles();
-                subscribeToTicks();
+                subscribeToCandles(); // This handles both price and candle building
             }
             
             logActivity('Market changed to ' + marketNames[settings.marketSymbol], 'info');
@@ -2013,6 +2026,38 @@
             settings.durationType = selected.value;
             saveSettings();
             logActivity('Duration type changed to ' + selected.nextElementSibling.textContent, 'info');
+        }
+
+        // Change Candle Period
+        function changeCandlePeriod() {
+            const selected = document.querySelector('input[name="candlePeriod"]:checked');
+            const newPeriod = parseInt(selected.value);
+            
+            if (newPeriod !== candlePeriod) {
+                candlePeriod = newPeriod;
+                
+                // Clear current candle data and reset
+                candleData = [];
+                currentCandle = null;
+                candleStartTime = null;
+                
+                const periodText = candlePeriod === 30 ? '30-second' : '1-minute';
+                logActivity('Candle period changed to ' + periodText + ' - resetting candle data', 'info');
+                
+                // If connected, resubscribe to rebuild candles with new period
+                if (ws && ws.readyState === WebSocket.OPEN && currentCandleSymbol) {
+                    const signalElement = document.getElementById('signalValue');
+                    const detailsElement = document.getElementById('signalDetails');
+                    
+                    signalElement.textContent = 'LOADING...';
+                    signalElement.className = 'signal-value none';
+                    detailsElement.textContent = 'Building ' + periodText + ' candles from live ticks...';
+                    
+                    logActivity('Rebuilding candles with ' + periodText + ' period...', 'info');
+                }
+                
+                saveSettings();
+            }
         }
 
         // Toggle Filter
@@ -2043,6 +2088,12 @@
             settings.tradeDuration = parseInt(document.getElementById('tradeDuration').value);
             settings.reverseMode = reverseMode;
             settings.alternatorMode = alternatorMode;
+            
+            // Save candle period
+            const candlePeriodRadio = document.querySelector('input[name="candlePeriod"]:checked');
+            if (candlePeriodRadio) {
+                settings.candlePeriod = parseInt(candlePeriodRadio.value);
+            }
             
             localStorage.setItem('tradingSettings', JSON.stringify(settings));
         }
@@ -2084,6 +2135,15 @@
                     marketRadio.checked = true;
                     marketRadio.parentElement.classList.add('selected');
                 }
+                
+                // Load and apply candle period
+                if (settings.candlePeriod) {
+                    candlePeriod = settings.candlePeriod;
+                    const candlePeriodRadio = document.querySelector(`input[name="candlePeriod"][value="${settings.candlePeriod}"]`);
+                    if (candlePeriodRadio) {
+                        candlePeriodRadio.checked = true;
+                    }
+                }
             }
         }
 
@@ -2111,11 +2171,6 @@
         function logout() {
             // Unsubscribe from all streams before closing
             if (ws && ws.readyState === WebSocket.OPEN) {
-                if (tickSubscription) {
-                    ws.send(JSON.stringify({
-                        forget: tickSubscription
-                    }));
-                }
                 if (candleSubscription) {
                     ws.send(JSON.stringify({
                         forget: candleSubscription
@@ -2131,8 +2186,8 @@
             isLoggedIn = false;
             
             // Reset subscription IDs
-            tickSubscription = null;
             candleSubscription = null;
+            currentCandleSymbol = null;
             
             // Reset proposal and trading state
             proposalId = null;
@@ -2140,6 +2195,11 @@
             pendingTradeType = null;
             currentSignal = 'NONE';
             isAutoTrading = false;
+            candleData = [];
+            
+            // Reset live candle building
+            currentCandle = null;
+            candleStartTime = null;
             
             // Reset UI
             document.getElementById('apiToken').disabled = false;
