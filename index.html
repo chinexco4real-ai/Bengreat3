@@ -503,6 +503,16 @@
             color: white;
         }
 
+        .mode-badge.adx {
+            background: #2196f3;
+            color: white;
+        }
+
+        .mode-badge.rsi {
+            background: #4caf50;
+            color: white;
+        }
+
         /* Control Buttons */
         .control-buttons {
             display: grid;
@@ -948,6 +958,17 @@
                             <input type="number" id="stakeAmount" value="1" step="0.1" min="0.1" onchange="saveSettings()">
                         </div>
                         <div class="setting-item">
+                            <label>Stop Loss</label>
+                            <input type="number" id="stopLoss" value="0" step="0.1" min="0" onchange="saveSettings()">
+                        </div>
+                    </div>
+
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label>Take Profit</label>
+                            <input type="number" id="takeProfit" value="0" step="0.1" min="0" onchange="saveSettings()">
+                        </div>
+                        <div class="setting-item">
                             <label>Candle Period</label>
                             <div class="radio-group">
                                 <label class="radio-item">
@@ -1086,6 +1107,7 @@
         let currentCandle = null; // Currently building candle
         let candleStartTime = null; // When current candle started
         let candlePeriod = 60; // Default: 60 seconds = 1 minute candles (can be 30 or 60)
+        let totalCandleCount = 0; // Total candles created (not affected by array size limit)
         
         let isAutoTrading = false;
         let currentSignal = 'NONE';
@@ -1131,6 +1153,8 @@
             rsiPeriod: 14,
             marketSymbol: 'R_10',
             stakeAmount: 1,
+            stopLoss: 0,
+            takeProfit: 0,
             durationType: 't',
             tradeDuration: 5,
             candlePeriod: 60  // Default to 1-minute candles
@@ -1149,6 +1173,23 @@
             const container = document.getElementById('modeBadges');
             container.innerHTML = '';
             
+            // Show ADX filter badge if enabled
+            if (settings.adxEnabled) {
+                const badge = document.createElement('div');
+                badge.className = 'mode-badge adx';
+                badge.textContent = 'ADX Filter (' + settings.adxPeriod + ', ≥' + settings.adxThreshold + ')';
+                container.appendChild(badge);
+            }
+            
+            // Show RSI filter badge if enabled
+            if (settings.rsiEnabled) {
+                const badge = document.createElement('div');
+                badge.className = 'mode-badge rsi';
+                badge.textContent = 'RSI Filter (' + settings.rsiPeriod + ')';
+                container.appendChild(badge);
+            }
+            
+            // Show Reverse Mode badge if enabled
             if (reverseMode) {
                 const badge = document.createElement('div');
                 badge.className = 'mode-badge reverse';
@@ -1156,6 +1197,7 @@
                 container.appendChild(badge);
             }
             
+            // Show Alternator Mode badge if enabled
             if (alternatorMode) {
                 const badge = document.createElement('div');
                 badge.className = 'mode-badge alternator';
@@ -1483,6 +1525,7 @@
                 candleData = [];
                 currentCandle = null;
                 candleStartTime = null;
+                totalCandleCount = 0; // Reset counter
             }
             
             // Show LOADING status immediately
@@ -1518,16 +1561,17 @@
                 // If we have a completed candle, add it to history
                 if (currentCandle) {
                     candleData.push(currentCandle);
+                    totalCandleCount++; // Increment total count
                     
-                    // Keep only last 100 candles
+                    // Keep only last 100 candles in array
                     if (candleData.length > 100) {
                         candleData.shift();
                     }
                     
                     // Log every 20 candles continuously (20, 40, 60, 80, 100, 120, etc.)
                     const candleType = candlePeriod === 30 ? '30-sec' : '1-min';
-                    if (candleData.length % 20 === 0) {
-                        logActivity('Candle #' + candleData.length + ' completed (' + candleType + ')', 'info');
+                    if (totalCandleCount % 20 === 0) {
+                        logActivity('Candle #' + totalCandleCount + ' completed (' + candleType + ')', 'info');
                     }
                 }
                 
@@ -1681,7 +1725,17 @@
             updateSignalDisplay(signal, signalDetails);
 
             if (isAutoTrading && signal !== 'NONE' && signal !== currentSignal) {
-                logActivity('New signal detected: ' + signal + ' (Previous: ' + currentSignal + ')', 'info');
+                // Build filter status message
+                let filterStatus = '';
+                if (settings.adxEnabled || settings.rsiEnabled) {
+                    filterStatus = ' [Filters: ';
+                    const activeFilters = [];
+                    if (settings.adxEnabled) activeFilters.push('ADX ✓');
+                    if (settings.rsiEnabled) activeFilters.push('RSI ✓');
+                    filterStatus += activeFilters.join(', ') + ']';
+                }
+                
+                logActivity('New signal detected: ' + signal + filterStatus + ' (Previous: ' + currentSignal + ')', 'info');
                 const tradeType = signal === 'BUY' ? 'CALL' : 'PUT';
                 executeTrade(tradeType);
             }
@@ -2102,6 +2156,7 @@
                 candleData = [];
                 currentCandle = null;
                 candleStartTime = null;
+                totalCandleCount = 0; // Reset counter
                 
                 const periodText = candlePeriod === 30 ? '30-second' : '1-minute';
                 logActivity('Candle period changed to ' + periodText + ' - resetting candle data', 'info');
@@ -2136,7 +2191,17 @@
             }
             
             saveSettings();
-            logActivity(filterType.toUpperCase() + ' filter ' + (settings[filterType + 'Enabled'] ? 'enabled' : 'disabled'), 'info');
+            updateModeBadges(); // Update visual badges immediately
+            
+            const filterName = filterType.toUpperCase();
+            const status = settings[filterType + 'Enabled'] ? 'enabled' : 'disabled';
+            logActivity(filterName + ' filter ' + status, 'info');
+            
+            // If trading is active, recalculate strategy with new filter settings
+            if (isLoggedIn && candleData.length > 0) {
+                logActivity('Applying ' + filterName + ' filter changes in real-time...', 'info');
+                calculateStrategy();
+            }
         }
 
         // Save Settings
@@ -2147,6 +2212,8 @@
             settings.adxThreshold = parseInt(document.getElementById('adxThreshold').value);
             settings.rsiPeriod = parseInt(document.getElementById('rsiPeriod').value);
             settings.stakeAmount = parseFloat(document.getElementById('stakeAmount').value);
+            settings.stopLoss = parseFloat(document.getElementById('stopLoss').value);
+            settings.takeProfit = parseFloat(document.getElementById('takeProfit').value);
             settings.tradeDuration = parseInt(document.getElementById('tradeDuration').value);
             settings.reverseMode = reverseMode;
             settings.alternatorMode = alternatorMode;
@@ -2158,6 +2225,14 @@
             }
             
             localStorage.setItem('tradingSettings', JSON.stringify(settings));
+            
+            // Update badges to reflect current filter settings
+            updateModeBadges();
+            
+            // Apply changes in real-time if trading is active
+            if (isLoggedIn && candleData.length > 0) {
+                calculateStrategy();
+            }
         }
 
         // Load Settings
@@ -2172,6 +2247,8 @@
                 document.getElementById('adxThreshold').value = settings.adxThreshold;
                 document.getElementById('rsiPeriod').value = settings.rsiPeriod;
                 document.getElementById('stakeAmount').value = settings.stakeAmount;
+                document.getElementById('stopLoss').value = settings.stopLoss || 0;
+                document.getElementById('takeProfit').value = settings.takeProfit || 0;
                 document.getElementById('tradeDuration').value = settings.tradeDuration;
                 
                 if (settings.adxEnabled) {
@@ -2262,6 +2339,7 @@
             // Reset live candle building
             currentCandle = null;
             candleStartTime = null;
+            totalCandleCount = 0;
             
             // Reset UI
             document.getElementById('apiToken').disabled = false;
