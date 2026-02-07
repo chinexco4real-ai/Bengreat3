@@ -174,9 +174,25 @@
             animation: blink 2s infinite;
         }
 
+        .connection-status.connecting {
+            background: #ff9800;
+            animation: pulse 1s infinite;
+        }
+
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { 
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% { 
+                opacity: 0.6;
+                transform: scale(1.2);
+            }
         }
 
         /* Main Dashboard */
@@ -1256,18 +1272,37 @@
             };
 
             ws.onerror = function(error) {
-                logActivity('WebSocket error', 'error');
+                logActivity('WebSocket error - Connection lost', 'error');
                 updateConnectionStatus(false);
+                
+                // RESTART session timer on error (reset the session time)
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                }
+                startSessionTimer();
+                logActivity('Session timer restarted due to connection error', 'info');
             };
 
             ws.onclose = function() {
                 logActivity('WebSocket disconnected', 'error');
                 updateConnectionStatus(false);
                 
-                // Auto reconnect after 3 seconds
+                // RESTART session timer on disconnect (reset the session time)
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                }
+                startSessionTimer();
+                logActivity('Session timer restarted due to disconnection', 'info');
+                
+                // Clear subscriptions on disconnect
+                candleSubscription = null;
+                currentCandleSymbol = null;
+                
+                // Auto reconnect after 3 seconds if still logged in
                 setTimeout(() => {
                     if (apiToken && isLoggedIn) {
                         logActivity('Attempting to reconnect...', 'info');
+                        updateConnectionStatus('connecting');
                         connectWebSocket();
                     }
                 }, 3000);
@@ -1468,9 +1503,9 @@
                         candleData.shift();
                     }
                     
-                    // Only log every 10 candles or important milestones to avoid flooding
+                    // Log every 20 candles continuously (20, 40, 60, 80, 100, 120, etc.)
                     const candleType = candlePeriod === 30 ? '30-sec' : '1-min';
-                    if (candleData.length % 10 === 0 || candleData.length <= 20) {
+                    if (candleData.length % 20 === 0) {
                         logActivity('Candle #' + candleData.length + ' completed (' + candleType + ')', 'info');
                     }
                 }
@@ -2284,15 +2319,21 @@
         }
 
         // Update Connection Status
-        function updateConnectionStatus(connected) {
+        function updateConnectionStatus(status) {
             const statusElement = document.getElementById('connectionStatus');
             const textElement = document.getElementById('connectionText');
             
-            if (connected) {
+            if (status === true || status === 'connected') {
                 statusElement.classList.add('connected');
+                statusElement.classList.remove('connecting');
                 textElement.textContent = 'Connected';
+            } else if (status === 'connecting') {
+                statusElement.classList.remove('connected');
+                statusElement.classList.add('connecting');
+                textElement.textContent = 'Connecting...';
             } else {
                 statusElement.classList.remove('connected');
+                statusElement.classList.remove('connecting');
                 textElement.textContent = 'Disconnected';
             }
         }
