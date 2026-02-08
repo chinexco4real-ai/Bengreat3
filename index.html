@@ -1036,6 +1036,10 @@
                 <h3 class="panel-title">Trading Statistics</h3>
                 <div class="stats-grid">
                     <div class="stat-card">
+                        <div class="stat-label">Open Contracts</div>
+                        <div class="stat-value" id="openContracts" style="color: #4fc3f7;">0</div>
+                    </div>
+                    <div class="stat-card">
                         <div class="stat-label">Total Trades</div>
                         <div class="stat-value" id="totalTrades">0</div>
                     </div>
@@ -1124,6 +1128,11 @@
         let pendingProposal = null; // Track pending proposal for proper execution
         let currentPrice = 0;
         let pendingTradeType = null; // Store the trade type for pending trades
+        let activeContractSubscriptions = new Map(); // Track active contract subscriptions
+        
+        // Smart Contract Tracking System
+        let openContracts = new Map(); // Stores: contractId → {trade, startTime, duration, timeoutId}
+        const CONTRACT_BUFFER = 10; // Extra 10 seconds buffer after duration
 
         // Trading modes
         let reverseMode = false;
@@ -2072,7 +2081,8 @@
                 type: displayType,
                 stake: settings.stakeAmount,
                 contractId: buyData.contract_id,
-                result: 'PENDING'
+                result: 'PENDING',
+                subscriptionAttempts: 0
             };
             
             tradeHistory.unshift(trade);
@@ -2085,20 +2095,202 @@
             updateTradeHistory();
             
             // Subscribe to contract updates
+            subscribeToContract(buyData.contract_id, trade);
+        }
+
+        // Subscribe to Contract Updates
+        function subscribeToContract(contractId, trade) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                logActivity('Cannot subscribe to contract - WebSocket not connected', 'error');
+                return;
+            }
+            
+            trade.subscriptionAttempts++;
+            
             ws.send(JSON.stringify({
                 proposal_open_contract: 1,
-                contract_id: buyData.contract_id,
+                contract_id: contractId,
                 subscribe: 1
             }));
+            
+            logActivity('Subscribed to contract: ' + contractId, 'info');
+            
+            // Add to smart contract tracker
+            addToContractTracker(contractId, trade);
+            
+            // Set timeout to check if contract updates are received
+            setTimeout(() => {
+                const stillPending = tradeHistory.find(t => 
+                    t.contractId === contractId && (t.result === 'PENDING' || t.result === 'ACTIVE')
+                );
+                
+                if (stillPending && trade.subscriptionAttempts < 3) {
+                    logActivity('Contract ' + contractId + ' still pending, resubscribing...', 'info');
+                    subscribeToContract(contractId, trade);
+                } else if (stillPending && trade.subscriptionAttempts >= 3) {
+                    logActivity('Contract ' + contractId + ' - max subscription attempts reached', 'error');
+                    stillPending.result = 'ERROR (No updates)';
+                    updateTradeHistory();
+                }
+            }, 10000); // Check after 10 seconds
+        }
+
+        // Smart Contract Tracker - Add Contract
+        function addToContractTracker(contractId, trade) {
+            const startTime = Date.now();
+            
+            // Calculate contract duration in milliseconds
+            let durationMs = 0;
+            if (settings.durationType === 't') {
+                // Ticks - estimate ~2 seconds per tick
+                durationMs = settings.tradeDuration * 2 * 1000;
+            } else if (settings.durationType === 's') {
+                // Seconds
+                durationMs = settings.tradeDuration * 1000;
+            } else if (settings.durationType === 'm') {
+                // Minutes
+                durationMs = settings.tradeDuration * 60 * 1000;
+            }
+            
+            // Add buffer time (10 seconds)
+            const totalTimeout = durationMs + (CONTRACT_BUFFER * 1000);
+            
+            // Set auto-cleanup timeout
+            const timeoutId = setTimeout(() => {
+                handleContractTimeout(contractId);
+            }, totalTimeout);
+            
+            // Store contract info
+            openContracts.set(contractId, {
+                trade: trade,
+                startTime: startTime,
+                duration: durationMs,
+                expectedEndTime: startTime + durationMs,
+                timeoutEndTime: startTime + totalTimeout,
+                timeoutId: timeoutId,
+                durationType: settings.durationType,
+                durationValue: settings.tradeDuration
+            });
+            
+            const durationText = formatDuration(settings.durationType, settings.tradeDuration);
+            logActivity('📊 Contract tracked: ' + contractId + ' | Duration: ' + durationText + ' (+10s buffer)', 'info');
+            
+            // Update statistics to show new open contract count
+            updateStatistics();
+        }
+
+        // Format duration for display
+        function formatDuration(type, value) {
+            if (type === 't') return value + ' ticks';
+            if (type === 's') return value + ' seconds';
+            if (type === 'm') return value + ' minutes';
+            return value;
+        }
+
+        // Handle Contract Timeout
+        function handleContractTimeout(contractId) {
+            const contractInfo = openContracts.get(contractId);
+            if (!contractInfo) return;
+            
+            const trade = tradeHistory.find(t => t.contractId === contractId);
+            if (!trade) {
+                openContracts.delete(contractId);
+                return;
+            }
+            
+            // Check if contract is still pending or active
+            if (trade.result === 'PENDING' || trade.result === 'ACTIVE') {
+                const elapsedTime = Math.floor((Date.now() - contractInfo.startTime) / 1000);
+                logActivity('⏱️ Contract timeout: ' + contractId + ' after ' + elapsedTime + 's - forcing closure check', 'info');
+                
+                // Force check contract status via API
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        proposal_open_contract: 1,
+                        contract_id: contractId
+                    }));
+                    
+                    // Set final timeout - if still no response, mark as timed out
+                    setTimeout(() => {
+                        const stillPending = tradeHistory.find(t => 
+                            t.contractId === contractId && (t.result === 'PENDING' || t.result === 'ACTIVE')
+                        );
+                        
+                        if (stillPending) {
+                            stillPending.result = 'TIMEOUT (No response)';
+                            updateTradeHistory();
+                            logActivity('❌ Contract ' + contractId + ' marked as TIMEOUT', 'error');
+                        }
+                        
+                        // Clean up
+                        removeFromContractTracker(contractId);
+                    }, 5000); // Wait 5 more seconds
+                } else {
+                    trade.result = 'TIMEOUT (Disconnected)';
+                    updateTradeHistory();
+                    removeFromContractTracker(contractId);
+                }
+            } else {
+                // Contract already settled, just clean up
+                removeFromContractTracker(contractId);
+            }
+        }
+
+        // Remove from Contract Tracker
+        function removeFromContractTracker(contractId) {
+            const contractInfo = openContracts.get(contractId);
+            if (contractInfo) {
+                // Clear timeout
+                if (contractInfo.timeoutId) {
+                    clearTimeout(contractInfo.timeoutId);
+                }
+                
+                // Unsubscribe if subscription exists
+                const subscriptionId = activeContractSubscriptions.get(contractId);
+                if (subscriptionId && ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        forget: subscriptionId
+                    }));
+                    activeContractSubscriptions.delete(contractId);
+                }
+                
+                openContracts.delete(contractId);
+                logActivity('✓ Contract removed from tracker: ' + contractId, 'info');
+                
+                // Update statistics to show updated open contract count
+                updateStatistics();
+            }
+        }
+
+        // Get Open Contracts Summary
+        function getOpenContractsSummary() {
+            if (openContracts.size === 0) return 'No open contracts';
+            
+            let summary = `Open contracts: ${openContracts.size}\n`;
+            openContracts.forEach((info, contractId) => {
+                const elapsed = Math.floor((Date.now() - info.startTime) / 1000);
+                const remaining = Math.max(0, Math.floor((info.timeoutEndTime - Date.now()) / 1000));
+                summary += `  • ${contractId.substring(0, 8)}... | ${elapsed}s elapsed | ${remaining}s until timeout\n`;
+            });
+            return summary;
         }
 
         // Update Trade Result
         function updateTradeResult(contract) {
             if (!contract || !contract.contract_id) return;
             
-            const trade = tradeHistory.find(t => t.contractId === contract.contract_id);
-            if (!trade) return;
+            // Store subscription ID if this is the first response
+            if (contract.subscription && contract.subscription.id) {
+                activeContractSubscriptions.set(contract.contract_id, contract.subscription.id);
+            }
             
+            const trade = tradeHistory.find(t => t.contractId === contract.contract_id);
+            if (!trade) {
+                // Contract update for unknown trade - might be old or from previous session
+                return;
+            }
+            
+            // Update trade status based on contract state
             if (contract.is_sold) {
                 const profit = contract.profit;
                 trade.result = profit > 0 ? 'WIN (+' + profit.toFixed(2) + ')' : 'LOSS (' + profit.toFixed(2) + ')';
@@ -2107,7 +2299,17 @@
                 updateTradeHistory();
                 updateStatistics();
                 
-                logActivity('Trade closed: ' + trade.result, profit > 0 ? 'success' : 'error');
+                logActivity('✓ Trade closed: ' + trade.result + ' | Contract: ' + contract.contract_id, profit > 0 ? 'success' : 'error');
+                
+                // Remove from smart contract tracker (handles unsubscribe automatically)
+                removeFromContractTracker(contract.contract_id);
+            } else if (contract.status) {
+                // Contract is still active - update status
+                if (trade.result === 'PENDING') {
+                    trade.result = 'ACTIVE';
+                    updateTradeHistory();
+                    logActivity('Contract active: ' + contract.contract_id + ' | Status: ' + contract.status, 'info');
+                }
             }
         }
 
@@ -2139,6 +2341,9 @@
             const wins = completedTrades.filter(t => t.profit > 0);
             const losses = completedTrades.filter(t => t.profit < 0);
             const totalPL = completedTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
+            
+            // Update open contracts count
+            document.getElementById('openContracts').textContent = openContracts.size;
             
             document.getElementById('totalTrades').textContent = completedTrades.length;
             document.getElementById('totalWins').textContent = wins.length;
@@ -2348,6 +2553,14 @@
 
         // Logout
         function logout() {
+            // Clean up all open contracts first
+            openContracts.forEach((info, contractId) => {
+                if (info.timeoutId) {
+                    clearTimeout(info.timeoutId);
+                }
+            });
+            openContracts.clear();
+            
             // Unsubscribe from all streams before closing
             if (ws && ws.readyState === WebSocket.OPEN) {
                 if (candleSubscription) {
@@ -2355,6 +2568,13 @@
                         forget: candleSubscription
                     }));
                 }
+                
+                // Unsubscribe from all active contract subscriptions
+                activeContractSubscriptions.forEach((subscriptionId, contractId) => {
+                    ws.send(JSON.stringify({
+                        forget: subscriptionId
+                    }));
+                });
             }
             
             if (ws) {
@@ -2367,6 +2587,7 @@
             // Reset subscription IDs
             candleSubscription = null;
             currentCandleSymbol = null;
+            activeContractSubscriptions.clear();
             
             // Reset proposal and trading state
             proposalId = null;
