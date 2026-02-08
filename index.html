@@ -1108,6 +1108,8 @@
         let candleStartTime = null; // When current candle started
         let candlePeriod = 60; // Default: 60 seconds = 1 minute candles (can be 30 or 60)
         let totalCandleCount = 0; // Total candles created (not affected by array size limit)
+        let candleCollectionStartTime = null; // Track when collection started for time calculation
+        let candleCollectionComplete = false; // Track if initial collection is complete
         
         let isAutoTrading = false;
         let currentSignal = 'NONE';
@@ -1526,6 +1528,8 @@
                 currentCandle = null;
                 candleStartTime = null;
                 totalCandleCount = 0; // Reset counter
+                candleCollectionStartTime = null;
+                candleCollectionComplete = false;
             }
             
             // Show LOADING status immediately
@@ -1612,6 +1616,17 @@
                 const progress = Math.floor((candleData.length / requiredLength) * 100);
                 const remaining = requiredLength - candleData.length;
                 
+                // Calculate estimated time remaining based on candle period
+                const remainingSeconds = remaining * candlePeriod;
+                const remainingMinutes = Math.floor(remainingSeconds / 60);
+                const remainingSecs = remainingSeconds % 60;
+                let timeEstimate = '';
+                if (remainingMinutes > 0) {
+                    timeEstimate = ` (~${remainingMinutes}m ${remainingSecs}s remaining)`;
+                } else {
+                    timeEstimate = ` (~${remainingSecs}s remaining)`;
+                }
+                
                 const signalElement = document.getElementById('signalValue');
                 const detailsElement = document.getElementById('signalDetails');
                 const progressContainer = document.getElementById('progressContainer');
@@ -1632,20 +1647,42 @@
                     filterInfo = ' | No filters';
                 }
                 
-                detailsElement.innerHTML = `Collecting live data...${filterInfo}`;
+                const candleType = candlePeriod === 30 ? '30-sec' : '1-min';
+                detailsElement.innerHTML = `Collecting ${candleType} candles...${filterInfo}`;
                 progressContainer.classList.add('active');
-                progressFill.style.width = progress + '%';
-                progressText.textContent = `${candleData.length} / ${requiredLength} candles (${remaining} more needed)`;
                 
-                // Log progress
+                // Start timer on first candle
+                if (!candleCollectionStartTime && candleData.length === 1) {
+                    candleCollectionStartTime = Date.now();
+                }
+                
+                progressFill.style.width = progress + '%';
+                progressText.textContent = `${candleData.length} / ${requiredLength} ${candleType} candles${timeEstimate}`;
+                
+                // Log progress with detailed info
                 if (candleData.length % 5 === 0 || candleData.length === 1) {
-                    logActivity('Collecting candles: ' + candleData.length + '/' + requiredLength + ' (' + progress + '%)' + filterInfo, 'info');
+                    const periodInfo = candlePeriod === 30 ? ' (30-sec candles = 2x faster)' : ' (1-min candles)';
+                    logActivity('Collecting: ' + candleData.length + '/' + requiredLength + ' candles' + timeEstimate + periodInfo + filterInfo, 'info');
                 }
                 return;
             }
             
             const progressContainer = document.getElementById('progressContainer');
-            if (progressContainer) progressContainer.classList.remove('active');
+            if (progressContainer) {
+                // Log completion message only on first completion
+                if (progressContainer.classList.contains('active') && !candleCollectionComplete) {
+                    const collectionTime = candleCollectionStartTime ? 
+                        Math.floor((Date.now() - candleCollectionStartTime) / 1000) : 0;
+                    const minutes = Math.floor(collectionTime / 60);
+                    const seconds = collectionTime % 60;
+                    const timeText = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                    const candleType = candlePeriod === 30 ? '30-sec' : '1-min';
+                    
+                    logActivity(`✓ Candle collection complete! ${requiredLength} ${candleType} candles collected in ${timeText}`, 'success');
+                    candleCollectionComplete = true;
+                }
+                progressContainer.classList.remove('active');
+            }
 
             const atr = calculateATR(candleData, settings.stPeriod);
             const superTrend = calculateSuperTrend(candleData, settings.stPeriod, settings.stMultiplier, atr);
@@ -2157,9 +2194,12 @@
                 currentCandle = null;
                 candleStartTime = null;
                 totalCandleCount = 0; // Reset counter
+                candleCollectionStartTime = null;
+                candleCollectionComplete = false;
                 
                 const periodText = candlePeriod === 30 ? '30-second' : '1-minute';
-                logActivity('Candle period changed to ' + periodText + ' - resetting candle data', 'info');
+                const speedInfo = candlePeriod === 30 ? ' (Candles will build 2x faster!)' : '';
+                logActivity('Candle period changed to ' + periodText + speedInfo + ' - resetting candle data', 'info');
                 
                 // If connected, resubscribe to rebuild candles with new period
                 if (ws && ws.readyState === WebSocket.OPEN && currentCandleSymbol) {
@@ -2340,6 +2380,8 @@
             currentCandle = null;
             candleStartTime = null;
             totalCandleCount = 0;
+            candleCollectionStartTime = null;
+            candleCollectionComplete = false;
             
             // Reset UI
             document.getElementById('apiToken').disabled = false;
