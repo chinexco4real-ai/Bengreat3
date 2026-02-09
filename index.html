@@ -363,6 +363,24 @@
             left: 28px;
         }
 
+        /* MTF Indicator */
+        .mtf-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid #4caf50;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #4caf50;
+            margin-left: 8px;
+        }
+
+        .mtf-indicator.disabled {
+            background: rgba(136, 136, 136, 0.2);
+            border-color: #888;
+            color: #888;
+        }
+
         /* Signal Display */
         .signal-display {
             text-align: center;
@@ -503,14 +521,62 @@
             color: white;
         }
 
-        .mode-badge.adx {
-            background: #2196f3;
-            color: white;
-        }
-
         .mode-badge.rsi {
             background: #4caf50;
             color: white;
+        }
+
+        .mode-badge.mtf {
+            background: #00bcd4;
+            color: white;
+        }
+
+        .mode-badge.virtual {
+            background: #ff5722;
+            color: white;
+            animation: pulse-virtual 2s infinite;
+        }
+
+        @keyframes pulse-virtual {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .virtual-indicator {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(255, 87, 34, 0.2);
+            border: 2px solid #ff5722;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #ff5722;
+            font-weight: 700;
+            margin-left: 10px;
+            animation: pulse-virtual 2s infinite;
+        }
+
+        .live-indicator {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 2px solid #4caf50;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #4caf50;
+            font-weight: 700;
+            margin-left: 10px;
+        }
+
+        /* Virtual indicator in table */
+        table .virtual-indicator {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #ff5722;
+            border-radius: 3px;
+            font-size: 9px;
+            color: white;
+            font-weight: 700;
+            margin-left: 4px;
         }
 
         /* Control Buttons */
@@ -899,26 +965,7 @@
                     </div>
 
                     <div class="setting-item">
-                        <label>Filter 1: ADX</label>
-                        <div class="toggle-switch">
-                            <div class="switch" id="adxFilterSwitch" onclick="toggleFilter('adx')"></div>
-                            <span>Enable ADX Filter</span>
-                        </div>
-                    </div>
-
-                    <div class="settings-grid">
-                        <div class="setting-item">
-                            <label>ADX Period</label>
-                            <input type="number" id="adxPeriod" value="14" min="1" max="50" onchange="saveSettings()">
-                        </div>
-                        <div class="setting-item">
-                            <label>ADX Threshold</label>
-                            <input type="number" id="adxThreshold" value="20" min="1" max="100" onchange="saveSettings()">
-                        </div>
-                    </div>
-
-                    <div class="setting-item">
-                        <label>Filter 2: RSI</label>
+                        <label>Filter 1: RSI</label>
                         <div class="toggle-switch">
                             <div class="switch" id="rsiFilterSwitch" onclick="toggleFilter('rsi')"></div>
                             <span>Enable RSI Filter</span>
@@ -928,6 +975,27 @@
                     <div class="setting-item">
                         <label>RSI Period</label>
                         <input type="number" id="rsiPeriod" value="14" min="1" max="50" onchange="saveSettings()">
+                    </div>
+
+                    <div class="setting-item">
+                        <label>Filter 2: Multi-Timeframe Confirmation</label>
+                        <div class="toggle-switch">
+                            <div class="switch" id="mtfFilterSwitch" onclick="toggleFilter('mtf')"></div>
+                            <span>Enable MTF Filter<span class="mtf-indicator" id="mtfIndicator">Auto: 5m</span></span>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>Filter 3: Virtual Trading Start</label>
+                        <div class="toggle-switch">
+                            <div class="switch" id="virtualFilterSwitch" onclick="toggleFilter('virtual')"></div>
+                            <span>Start with Virtual Trading</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>Switch to Live After Losses</label>
+                        <input type="number" id="virtualLossThreshold" value="3" min="1" max="20" onchange="saveSettings()">
                     </div>
                 </div>
 
@@ -1036,10 +1104,6 @@
                 <h3 class="panel-title">Trading Statistics</h3>
                 <div class="stats-grid">
                     <div class="stat-card">
-                        <div class="stat-label">Open Contracts</div>
-                        <div class="stat-value" id="openContracts" style="color: #4fc3f7;">0</div>
-                    </div>
-                    <div class="stat-card">
                         <div class="stat-label">Total Trades</div>
                         <div class="stat-value" id="totalTrades">0</div>
                     </div>
@@ -1128,16 +1192,31 @@
         let pendingProposal = null; // Track pending proposal for proper execution
         let currentPrice = 0;
         let pendingTradeType = null; // Store the trade type for pending trades
-        let activeContractSubscriptions = new Map(); // Track active contract subscriptions
-        
-        // Smart Contract Tracking System
-        let openContracts = new Map(); // Stores: contractId → {trade, startTime, duration, timeoutId}
-        const CONTRACT_BUFFER = 10; // Extra 10 seconds buffer after duration
 
         // Trading modes
         let reverseMode = false;
         let alternatorMode = false;
         let lastTradeType = null;
+        
+        // Multi-Timeframe variables
+        let mtfEnabled = false;
+        let mtfCandleData = [];
+        let mtfCandlePeriod = 300; // Default 5 minutes for 1-minute base
+        let mtfSubscription = null;
+        let currentMtfCandleSymbol = null;
+        let mtfCurrentCandle = null;
+        let mtfCandleStartTime = null;
+        
+        // Virtual Trading variables
+        let virtualTradingEnabled = false;
+        let isVirtualMode = false;
+        let virtualConsecutiveLosses = 0;
+        let virtualLossThreshold = 3;
+        let virtualTradeHistory = [];
+        
+        // Contract Tracking System - Smart Duration-Based
+        let activeContracts = new Map(); // Map of contract_id -> {contract details + timeout}
+        let contractTimeouts = new Map(); // Map of contract_id -> timeout reference
 
         // Market names mapping
         const marketNames = {
@@ -1157,11 +1236,11 @@
         let settings = {
             stPeriod: 10,
             stMultiplier: 3.0,
-            adxEnabled: false,
-            adxPeriod: 14,
-            adxThreshold: 20,
             rsiEnabled: false,
             rsiPeriod: 14,
+            mtfEnabled: false,
+            virtualEnabled: false,
+            virtualLossThreshold: 3,
             marketSymbol: 'R_10',
             stakeAmount: 1,
             stopLoss: 0,
@@ -1177,6 +1256,7 @@
             checkSavedToken();
             disableTrading();
             updateModeBadges();
+            startContractTracking();
         };
 
         // Update mode badges display
@@ -1184,19 +1264,28 @@
             const container = document.getElementById('modeBadges');
             container.innerHTML = '';
             
-            // Show ADX filter badge if enabled
-            if (settings.adxEnabled) {
-                const badge = document.createElement('div');
-                badge.className = 'mode-badge adx';
-                badge.textContent = 'ADX Filter (' + settings.adxPeriod + ', ≥' + settings.adxThreshold + ')';
-                container.appendChild(badge);
-            }
-            
             // Show RSI filter badge if enabled
             if (settings.rsiEnabled) {
                 const badge = document.createElement('div');
                 badge.className = 'mode-badge rsi';
                 badge.textContent = 'RSI Filter (' + settings.rsiPeriod + ')';
+                container.appendChild(badge);
+            }
+            
+            // Show MTF filter badge if enabled
+            if (settings.mtfEnabled) {
+                const badge = document.createElement('div');
+                badge.className = 'mode-badge mtf';
+                const mtfLabel = getMTFLabel();
+                badge.textContent = 'MTF Confirmation (' + mtfLabel + ')';
+                container.appendChild(badge);
+            }
+            
+            // Show Virtual Trading badge if in virtual mode
+            if (isVirtualMode) {
+                const badge = document.createElement('div');
+                badge.className = 'mode-badge virtual';
+                badge.textContent = 'Virtual Mode (Losses: ' + virtualConsecutiveLosses + '/' + virtualLossThreshold + ')';
                 container.appendChild(badge);
             }
             
@@ -1437,6 +1526,12 @@
                         candleSubscription = data.subscription.id;
                         logActivity('Live tick subscription confirmed: ' + marketNames[currentCandleSymbol], 'success');
                     }
+                    // Capture MTF subscription ID
+                    if (settings.mtfEnabled && !mtfSubscription && data.subscription.id !== candleSubscription) {
+                        mtfSubscription = data.subscription.id;
+                        const mtfLabel = getMTFLabel();
+                        logActivity('MTF subscription confirmed: ' + mtfLabel + ' timeframe', 'success');
+                    }
                 }
                 
                 // Update current price display
@@ -1445,6 +1540,11 @@
                 
                 // Build candles from live ticks
                 processLiveTick(tickPrice, tickTime);
+                
+                // Build MTF candles from same ticks
+                if (settings.mtfEnabled) {
+                    processMTFTick(tickPrice, tickTime);
+                }
             }
 
             // Proposal response
@@ -1473,10 +1573,20 @@
 
             // Buy response
             if (data.buy) {
-                logActivity('Trade opened: Contract ID ' + data.buy.contract_id, 'success');
+                const mode = isVirtualMode ? 'VIRTUAL' : 'LIVE';
+                logActivity('Trade opened (' + mode + '): Contract ID ' + data.buy.contract_id, 'success');
                 
                 // Log the full buy data for debugging
                 console.log('Buy response:', data.buy);
+                
+                // Track contract for monitoring with duration from settings
+                trackContract(
+                    data.buy.contract_id, 
+                    data.buy.contract_type, 
+                    data.buy.buy_price,
+                    settings.tradeDuration,
+                    settings.durationType
+                );
                 
                 trackTrade(data.buy);
                 proposalId = null;
@@ -1484,7 +1594,17 @@
 
             // Proposal open contract (for tracking)
             if (data.proposal_open_contract) {
-                updateTradeResult(data.proposal_open_contract);
+                const contract = data.proposal_open_contract;
+                
+                // Update trade result
+                updateTradeResult(contract);
+                
+                // If contract is closed, remove from tracking
+                if (contract.status === 'sold' || contract.status === 'cancelled') {
+                    const result = contract.status === 'sold' ? 
+                        (contract.profit > 0 ? 'WIN' : 'LOSS') : 'CANCELLED';
+                    removeContract(contract.contract_id, result);
+                }
             }
         }
 
@@ -1562,6 +1682,36 @@
             }));
 
             logActivity('Subscribing to ' + marketNames[symbol] + ' live ticks for real-time candle building...', 'info');
+            
+            // Subscribe to MTF candles if enabled
+            if (settings.mtfEnabled) {
+                subscribeMTFCandles(symbol);
+            }
+        }
+
+        // Subscribe to MTF Candles
+        function subscribeMTFCandles(symbol) {
+            if (!settings.mtfEnabled) return;
+            
+            // Unsubscribe from previous MTF stream if exists
+            if (mtfSubscription) {
+                ws.send(JSON.stringify({ forget: mtfSubscription }));
+                mtfSubscription = null;
+                mtfCandleData = [];
+                mtfCurrentCandle = null;
+                mtfCandleStartTime = null;
+            }
+            
+            currentMtfCandleSymbol = symbol;
+            
+            // Subscribe to higher timeframe ticks
+            ws.send(JSON.stringify({
+                ticks: symbol,
+                subscribe: 1
+            }));
+            
+            const mtfLabel = getMTFLabel();
+            logActivity('MTF: Subscribing to ' + mtfLabel + ' confirmation timeframe...', 'info');
         }
 
         // Process Live Tick and Build Candles
@@ -1608,14 +1758,44 @@
             calculateStrategy();
         }
 
+        // Process MTF Tick and Build Higher Timeframe Candles
+        function processMTFTick(price, timestamp) {
+            // Calculate which MTF candle period this tick belongs to
+            const mtfPeriodStart = Math.floor(timestamp / mtfCandlePeriod) * mtfCandlePeriod;
+            
+            // Check if we need to start a new MTF candle
+            if (!mtfCurrentCandle || mtfPeriodStart !== mtfCandleStartTime) {
+                // If we have a completed candle, add it to history
+                if (mtfCurrentCandle) {
+                    mtfCandleData.push(mtfCurrentCandle);
+                    
+                    // Keep only last 100 candles in array
+                    if (mtfCandleData.length > 100) {
+                        mtfCandleData.shift();
+                    }
+                }
+                
+                // Start new MTF candle
+                mtfCurrentCandle = {
+                    time: mtfPeriodStart,
+                    open: price,
+                    high: price,
+                    low: price,
+                    close: price
+                };
+                mtfCandleStartTime = mtfPeriodStart;
+            } else {
+                // Update current MTF candle with new tick
+                mtfCurrentCandle.high = Math.max(mtfCurrentCandle.high, price);
+                mtfCurrentCandle.low = Math.min(mtfCurrentCandle.low, price);
+                mtfCurrentCandle.close = price;
+            }
+        }
+
         // Calculate SuperTrend Strategy
         function calculateStrategy() {
             // Base requirement: period + 1 for ATR, +1 for first ST, +1 for signal flip = period + 3
             let requiredLength = settings.stPeriod + 3;
-            
-            if (settings.adxEnabled) {
-                requiredLength = Math.max(requiredLength, settings.adxPeriod + 2);
-            }
             
             if (settings.rsiEnabled) {
                 requiredLength = Math.max(requiredLength, settings.rsiPeriod + 2);
@@ -1647,10 +1827,10 @@
                 
                 // Show which filters are enabled
                 let filterInfo = '';
-                if (settings.adxEnabled || settings.rsiEnabled) {
+                if (settings.rsiEnabled || settings.mtfEnabled) {
                     const enabledFilters = [];
-                    if (settings.adxEnabled) enabledFilters.push('ADX');
                     if (settings.rsiEnabled) enabledFilters.push('RSI');
+                    if (settings.mtfEnabled) enabledFilters.push('MTF ' + getMTFLabel());
                     filterInfo = ' | Filters: ' + enabledFilters.join(', ');
                 } else {
                     filterInfo = ' | No filters';
@@ -1718,22 +1898,6 @@
 
             // Filters
             if (signal !== 'NONE') {
-                if (settings.adxEnabled) {
-                    const adx = calculateADX(candleData, settings.adxPeriod);
-                    if (!adx || adx.length === 0) {
-                        signal = 'NONE';
-                        signalDetails = 'Filtered: ADX calculation failed';
-                    } else {
-                        const currentADX = adx[adx.length - 1];
-                        if (!currentADX || currentADX < settings.adxThreshold) {
-                            signal = 'NONE';
-                            signalDetails = 'Filtered: Weak ADX (' + (currentADX ? currentADX.toFixed(2) : '0') + ')';
-                        } else {
-                            signalDetails += ' | ADX: ' + currentADX.toFixed(2);
-                        }
-                    }
-                }
-
                 if (settings.rsiEnabled && signal !== 'NONE') {
                     const rsi = calculateRSI(candleData, settings.rsiPeriod);
                     if (!rsi || rsi.length === 0) {
@@ -1764,6 +1928,44 @@
                         }
                     }
                 }
+                
+                // MTF Confirmation Filter
+                if (settings.mtfEnabled && signal !== 'NONE') {
+                    // Require minimum MTF candles for reliable SuperTrend
+                    const mtfRequiredLength = settings.stPeriod + 3;
+                    
+                    if (mtfCandleData.length < mtfRequiredLength) {
+                        signal = 'NONE';
+                        const mtfLabel = getMTFLabel();
+                        signalDetails = 'Filtered: Collecting ' + mtfLabel + ' candles (' + mtfCandleData.length + '/' + mtfRequiredLength + ')';
+                    } else {
+                        // Calculate SuperTrend on MTF data
+                        const mtfAtr = calculateATR(mtfCandleData, settings.stPeriod);
+                        const mtfSuperTrend = calculateSuperTrend(mtfCandleData, settings.stPeriod, settings.stMultiplier, mtfAtr);
+                        
+                        if (!mtfSuperTrend || mtfSuperTrend.length < 1) {
+                            signal = 'NONE';
+                            signalDetails = 'Filtered: MTF SuperTrend calculation pending';
+                        } else {
+                            const mtfCurrentTrend = mtfSuperTrend[mtfSuperTrend.length - 1];
+                            const mtfTrendDirection = mtfCurrentTrend.trend;
+                            
+                            // Check if MTF trend matches the signal
+                            if (signal === 'BUY' && mtfTrendDirection !== 'UP') {
+                                signal = 'NONE';
+                                const mtfLabel = getMTFLabel();
+                                signalDetails = 'Filtered: MTF ' + mtfLabel + ' not confirming (Trend: ' + mtfTrendDirection + ')';
+                            } else if (signal === 'SELL' && mtfTrendDirection !== 'DOWN') {
+                                signal = 'NONE';
+                                const mtfLabel = getMTFLabel();
+                                signalDetails = 'Filtered: MTF ' + mtfLabel + ' not confirming (Trend: ' + mtfTrendDirection + ')';
+                            } else {
+                                const mtfLabel = getMTFLabel();
+                                signalDetails += ' | MTF ' + mtfLabel + ': ' + mtfTrendDirection + ' ✓';
+                            }
+                        }
+                    }
+                }
             } else {
                 signalDetails = 'Trend: ' + currentTrend.trend;
             }
@@ -1773,11 +1975,11 @@
             if (isAutoTrading && signal !== 'NONE' && signal !== currentSignal) {
                 // Build filter status message
                 let filterStatus = '';
-                if (settings.adxEnabled || settings.rsiEnabled) {
+                if (settings.rsiEnabled || settings.mtfEnabled) {
                     filterStatus = ' [Filters: ';
                     const activeFilters = [];
-                    if (settings.adxEnabled) activeFilters.push('ADX ✓');
                     if (settings.rsiEnabled) activeFilters.push('RSI ✓');
+                    if (settings.mtfEnabled) activeFilters.push('MTF ✓');
                     filterStatus += activeFilters.join(', ') + ']';
                 }
                 
@@ -1877,42 +2079,6 @@
         }
 
         // Calculate ADX
-        function calculateADX(candles, period) {
-            const adx = [];
-            const plusDM = [];
-            const minusDM = [];
-            const tr = [];
-            
-            for (let i = 1; i < candles.length; i++) {
-                const highDiff = candles[i].high - candles[i - 1].high;
-                const lowDiff = candles[i - 1].low - candles[i].low;
-                
-                plusDM.push(highDiff > lowDiff && highDiff > 0 ? highDiff : 0);
-                minusDM.push(lowDiff > highDiff && lowDiff > 0 ? lowDiff : 0);
-                
-                const trValue = Math.max(
-                    candles[i].high - candles[i].low,
-                    Math.abs(candles[i].high - candles[i - 1].close),
-                    Math.abs(candles[i].low - candles[i - 1].close)
-                );
-                tr.push(trValue);
-            }
-            
-            const smoothPlusDM = smoothData(plusDM, period);
-            const smoothMinusDM = smoothData(minusDM, period);
-            const smoothTR = smoothData(tr, period);
-            
-            const plusDI = smoothPlusDM.map((val, i) => (val / smoothTR[i]) * 100);
-            const minusDI = smoothMinusDM.map((val, i) => (val / smoothTR[i]) * 100);
-            
-            const dx = plusDI.map((val, i) => {
-                const sum = val + minusDI[i];
-                return sum === 0 ? 0 : (Math.abs(val - minusDI[i]) / sum) * 100;
-            });
-            
-            return smoothData(dx, period);
-        }
-
         // Calculate RSI
         function calculateRSI(candles, period) {
             const changes = [];
@@ -1948,26 +2114,6 @@
             return rsi;
         }
 
-        // Smooth data helper
-        function smoothData(data, period) {
-            const smoothed = [];
-            let sum = 0;
-            
-            for (let i = 0; i < data.length; i++) {
-                if (i < period - 1) {
-                    sum += data[i];
-                } else if (i === period - 1) {
-                    sum += data[i];
-                    smoothed.push(sum / period);
-                } else {
-                    const prevSmoothed = smoothed[smoothed.length - 1];
-                    smoothed.push((prevSmoothed * (period - 1) + data[i]) / period);
-                }
-            }
-            
-            return smoothed;
-        }
-
         // Update Signal Display
         function updateSignalDisplay(signal, details) {
             const signalElement = document.getElementById('signalValue');
@@ -1983,6 +2129,13 @@
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 logActivity('Cannot trade: Not connected', 'error');
                 return;
+            }
+            
+            // Log current trading mode
+            if (isVirtualMode) {
+                logActivity('⚡ Executing VIRTUAL trade (Losses: ' + virtualConsecutiveLosses + '/' + virtualLossThreshold + ')', 'info');
+            } else {
+                logActivity('⚡ Executing LIVE trade', 'info');
             }
 
             // Apply trading modes
@@ -2012,7 +2165,8 @@
             // Send proposal request
             ws.send(JSON.stringify(proposalRequest));
             
-            logActivity('Requesting proposal for ' + finalType + ' on ' + marketNames[settings.marketSymbol], 'info');
+            const mode = isVirtualMode ? '[VIRTUAL]' : '[LIVE]';
+            logActivity('Requesting proposal ' + mode + ' for ' + finalType + ' on ' + marketNames[settings.marketSymbol], 'info');
             
             // Trade will be executed automatically when proposal response is received
             // See handleWebSocketMessage() -> if (data.proposal) section
@@ -2082,7 +2236,7 @@
                 stake: settings.stakeAmount,
                 contractId: buyData.contract_id,
                 result: 'PENDING',
-                subscriptionAttempts: 0
+                isVirtual: isVirtualMode  // Mark if this was a virtual trade
             };
             
             tradeHistory.unshift(trade);
@@ -2095,221 +2249,50 @@
             updateTradeHistory();
             
             // Subscribe to contract updates
-            subscribeToContract(buyData.contract_id, trade);
-        }
-
-        // Subscribe to Contract Updates
-        function subscribeToContract(contractId, trade) {
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                logActivity('Cannot subscribe to contract - WebSocket not connected', 'error');
-                return;
-            }
-            
-            trade.subscriptionAttempts++;
-            
             ws.send(JSON.stringify({
                 proposal_open_contract: 1,
-                contract_id: contractId,
+                contract_id: buyData.contract_id,
                 subscribe: 1
             }));
-            
-            logActivity('Subscribed to contract: ' + contractId, 'info');
-            
-            // Add to smart contract tracker
-            addToContractTracker(contractId, trade);
-            
-            // Set timeout to check if contract updates are received
-            setTimeout(() => {
-                const stillPending = tradeHistory.find(t => 
-                    t.contractId === contractId && (t.result === 'PENDING' || t.result === 'ACTIVE')
-                );
-                
-                if (stillPending && trade.subscriptionAttempts < 3) {
-                    logActivity('Contract ' + contractId + ' still pending, resubscribing...', 'info');
-                    subscribeToContract(contractId, trade);
-                } else if (stillPending && trade.subscriptionAttempts >= 3) {
-                    logActivity('Contract ' + contractId + ' - max subscription attempts reached', 'error');
-                    stillPending.result = 'ERROR (No updates)';
-                    updateTradeHistory();
-                }
-            }, 10000); // Check after 10 seconds
-        }
-
-        // Smart Contract Tracker - Add Contract
-        function addToContractTracker(contractId, trade) {
-            const startTime = Date.now();
-            
-            // Calculate contract duration in milliseconds
-            let durationMs = 0;
-            if (settings.durationType === 't') {
-                // Ticks - estimate ~2 seconds per tick
-                durationMs = settings.tradeDuration * 2 * 1000;
-            } else if (settings.durationType === 's') {
-                // Seconds
-                durationMs = settings.tradeDuration * 1000;
-            } else if (settings.durationType === 'm') {
-                // Minutes
-                durationMs = settings.tradeDuration * 60 * 1000;
-            }
-            
-            // Add buffer time (10 seconds)
-            const totalTimeout = durationMs + (CONTRACT_BUFFER * 1000);
-            
-            // Set auto-cleanup timeout
-            const timeoutId = setTimeout(() => {
-                handleContractTimeout(contractId);
-            }, totalTimeout);
-            
-            // Store contract info
-            openContracts.set(contractId, {
-                trade: trade,
-                startTime: startTime,
-                duration: durationMs,
-                expectedEndTime: startTime + durationMs,
-                timeoutEndTime: startTime + totalTimeout,
-                timeoutId: timeoutId,
-                durationType: settings.durationType,
-                durationValue: settings.tradeDuration
-            });
-            
-            const durationText = formatDuration(settings.durationType, settings.tradeDuration);
-            logActivity('📊 Contract tracked: ' + contractId + ' | Duration: ' + durationText + ' (+10s buffer)', 'info');
-            
-            // Update statistics to show new open contract count
-            updateStatistics();
-        }
-
-        // Format duration for display
-        function formatDuration(type, value) {
-            if (type === 't') return value + ' ticks';
-            if (type === 's') return value + ' seconds';
-            if (type === 'm') return value + ' minutes';
-            return value;
-        }
-
-        // Handle Contract Timeout
-        function handleContractTimeout(contractId) {
-            const contractInfo = openContracts.get(contractId);
-            if (!contractInfo) return;
-            
-            const trade = tradeHistory.find(t => t.contractId === contractId);
-            if (!trade) {
-                openContracts.delete(contractId);
-                return;
-            }
-            
-            // Check if contract is still pending or active
-            if (trade.result === 'PENDING' || trade.result === 'ACTIVE') {
-                const elapsedTime = Math.floor((Date.now() - contractInfo.startTime) / 1000);
-                logActivity('⏱️ Contract timeout: ' + contractId + ' after ' + elapsedTime + 's - forcing closure check', 'info');
-                
-                // Force check contract status via API
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        proposal_open_contract: 1,
-                        contract_id: contractId
-                    }));
-                    
-                    // Set final timeout - if still no response, mark as timed out
-                    setTimeout(() => {
-                        const stillPending = tradeHistory.find(t => 
-                            t.contractId === contractId && (t.result === 'PENDING' || t.result === 'ACTIVE')
-                        );
-                        
-                        if (stillPending) {
-                            stillPending.result = 'TIMEOUT (No response)';
-                            updateTradeHistory();
-                            logActivity('❌ Contract ' + contractId + ' marked as TIMEOUT', 'error');
-                        }
-                        
-                        // Clean up
-                        removeFromContractTracker(contractId);
-                    }, 5000); // Wait 5 more seconds
-                } else {
-                    trade.result = 'TIMEOUT (Disconnected)';
-                    updateTradeHistory();
-                    removeFromContractTracker(contractId);
-                }
-            } else {
-                // Contract already settled, just clean up
-                removeFromContractTracker(contractId);
-            }
-        }
-
-        // Remove from Contract Tracker
-        function removeFromContractTracker(contractId) {
-            const contractInfo = openContracts.get(contractId);
-            if (contractInfo) {
-                // Clear timeout
-                if (contractInfo.timeoutId) {
-                    clearTimeout(contractInfo.timeoutId);
-                }
-                
-                // Unsubscribe if subscription exists
-                const subscriptionId = activeContractSubscriptions.get(contractId);
-                if (subscriptionId && ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        forget: subscriptionId
-                    }));
-                    activeContractSubscriptions.delete(contractId);
-                }
-                
-                openContracts.delete(contractId);
-                logActivity('✓ Contract removed from tracker: ' + contractId, 'info');
-                
-                // Update statistics to show updated open contract count
-                updateStatistics();
-            }
-        }
-
-        // Get Open Contracts Summary
-        function getOpenContractsSummary() {
-            if (openContracts.size === 0) return 'No open contracts';
-            
-            let summary = `Open contracts: ${openContracts.size}\n`;
-            openContracts.forEach((info, contractId) => {
-                const elapsed = Math.floor((Date.now() - info.startTime) / 1000);
-                const remaining = Math.max(0, Math.floor((info.timeoutEndTime - Date.now()) / 1000));
-                summary += `  • ${contractId.substring(0, 8)}... | ${elapsed}s elapsed | ${remaining}s until timeout\n`;
-            });
-            return summary;
         }
 
         // Update Trade Result
         function updateTradeResult(contract) {
             if (!contract || !contract.contract_id) return;
             
-            // Store subscription ID if this is the first response
-            if (contract.subscription && contract.subscription.id) {
-                activeContractSubscriptions.set(contract.contract_id, contract.subscription.id);
-            }
-            
             const trade = tradeHistory.find(t => t.contractId === contract.contract_id);
-            if (!trade) {
-                // Contract update for unknown trade - might be old or from previous session
-                return;
-            }
+            if (!trade) return;
             
-            // Update trade status based on contract state
             if (contract.is_sold) {
                 const profit = contract.profit;
                 trade.result = profit > 0 ? 'WIN (+' + profit.toFixed(2) + ')' : 'LOSS (' + profit.toFixed(2) + ')';
                 trade.profit = profit;
                 
+                // Track virtual trading losses
+                if (virtualTradingEnabled && trade.isVirtual) {
+                    if (profit < 0) {
+                        virtualConsecutiveLosses++;
+                        logActivity('Virtual loss #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold, 'error');
+                        
+                        // Check if threshold reached
+                        if (virtualConsecutiveLosses >= virtualLossThreshold) {
+                            isVirtualMode = false;
+                            logActivity('🔥 Virtual loss threshold reached! Switching to LIVE trading mode', 'success');
+                            updateModeBadges();
+                        }
+                    } else {
+                        // Reset on win
+                        virtualConsecutiveLosses = 0;
+                        logActivity('Virtual win! Loss counter reset', 'success');
+                    }
+                    updateModeBadges();
+                }
+                
                 updateTradeHistory();
                 updateStatistics();
                 
-                logActivity('✓ Trade closed: ' + trade.result + ' | Contract: ' + contract.contract_id, profit > 0 ? 'success' : 'error');
-                
-                // Remove from smart contract tracker (handles unsubscribe automatically)
-                removeFromContractTracker(contract.contract_id);
-            } else if (contract.status) {
-                // Contract is still active - update status
-                if (trade.result === 'PENDING') {
-                    trade.result = 'ACTIVE';
-                    updateTradeHistory();
-                    logActivity('Contract active: ' + contract.contract_id + ' | Status: ' + contract.status, 'info');
-                }
+                const mode = trade.isVirtual ? '[VIRTUAL]' : '[LIVE]';
+                logActivity('Trade closed ' + mode + ': ' + trade.result, profit > 0 ? 'success' : 'error');
             }
         }
 
@@ -2323,16 +2306,18 @@
             }
             
             // Display ALL trades (up to 500) - CSS scrolling will show ~10 visible
-            tbody.innerHTML = tradeHistory.map(trade => `
+            tbody.innerHTML = tradeHistory.map(trade => {
+                const virtualIndicator = trade.isVirtual ? '<span class="virtual-indicator">V</span>' : '';
+                return `
                 <tr>
                     <td>${trade.sn}</td>
                     <td>${trade.time}</td>
                     <td>${trade.market}</td>
-                    <td>${trade.type}</td>
+                    <td>${trade.type} ${virtualIndicator}</td>
                     <td>${trade.stake}</td>
                     <td class="${trade.result.includes('WIN') ? 'result-win' : trade.result.includes('LOSS') ? 'result-loss' : ''}">${trade.result}</td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
         }
 
         // Update Statistics
@@ -2341,9 +2326,6 @@
             const wins = completedTrades.filter(t => t.profit > 0);
             const losses = completedTrades.filter(t => t.profit < 0);
             const totalPL = completedTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
-            
-            // Update open contracts count
-            document.getElementById('openContracts').textContent = openContracts.size;
             
             document.getElementById('totalTrades').textContent = completedTrades.length;
             document.getElementById('totalWins').textContent = wins.length;
@@ -2393,6 +2375,7 @@
             
             if (newPeriod !== candlePeriod) {
                 candlePeriod = newPeriod;
+                mtfCandlePeriod = getMTFPeriod(); // Update MTF period
                 
                 // Clear current candle data and reset
                 candleData = [];
@@ -2402,9 +2385,19 @@
                 candleCollectionStartTime = null;
                 candleCollectionComplete = false;
                 
+                // Clear MTF candle data
+                mtfCandleData = [];
+                mtfCurrentCandle = null;
+                mtfCandleStartTime = null;
+                
                 const periodText = candlePeriod === 30 ? '30-second' : '1-minute';
+                const mtfLabel = getMTFLabel();
                 const speedInfo = candlePeriod === 30 ? ' (Candles will build 2x faster!)' : '';
                 logActivity('Candle period changed to ' + periodText + speedInfo + ' - resetting candle data', 'info');
+                
+                if (settings.mtfEnabled) {
+                    logActivity('MTF confirmation timeframe updated to ' + mtfLabel, 'info');
+                }
                 
                 // If connected, resubscribe to rebuild candles with new period
                 if (ws && ws.readyState === WebSocket.OPEN && currentCandleSymbol) {
@@ -2416,8 +2409,17 @@
                     detailsElement.textContent = 'Building ' + periodText + ' candles from live ticks...';
                     
                     logActivity('Rebuilding candles with ' + periodText + ' period...', 'info');
+                    
+                    // Resubscribe MTF if enabled
+                    if (settings.mtfEnabled && mtfSubscription) {
+                        ws.send(JSON.stringify({ forget: mtfSubscription }));
+                        mtfSubscription = null;
+                        subscribeMTFCandles(settings.marketSymbol);
+                    }
                 }
                 
+                // Update MTF indicator
+                updateMTFIndicator();
                 saveSettings();
             }
         }
@@ -2430,17 +2432,54 @@
             if (isActive) {
                 switchElement.classList.remove('active');
                 settings[filterType + 'Enabled'] = false;
+                
+                // If disabling MTF, unsubscribe from higher timeframe
+                if (filterType === 'mtf' && mtfSubscription) {
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({ forget: mtfSubscription }));
+                        mtfSubscription = null;
+                        currentMtfCandleSymbol = null;
+                        mtfCandleData = [];
+                        logActivity('MTF subscription stopped', 'info');
+                    }
+                }
+                
+                // If disabling virtual trading
+                if (filterType === 'virtual') {
+                    virtualTradingEnabled = false;
+                    isVirtualMode = false;
+                    virtualConsecutiveLosses = 0;
+                    logActivity('Virtual trading disabled', 'info');
+                }
             } else {
                 switchElement.classList.add('active');
                 settings[filterType + 'Enabled'] = true;
+                
+                // If enabling MTF and logged in, subscribe to higher timeframe
+                if (filterType === 'mtf' && isLoggedIn) {
+                    subscribeMTFCandles(settings.marketSymbol);
+                }
+                
+                // If enabling virtual trading
+                if (filterType === 'virtual') {
+                    virtualTradingEnabled = true;
+                    isVirtualMode = true;
+                    virtualConsecutiveLosses = 0;
+                    logActivity('Virtual trading enabled - starting in VIRTUAL mode', 'info');
+                }
             }
             
             saveSettings();
             updateModeBadges(); // Update visual badges immediately
             
-            const filterName = filterType.toUpperCase();
+            const filterName = filterType === 'mtf' ? 'MTF' : filterType === 'virtual' ? 'Virtual Trading' : filterType.toUpperCase();
             const status = settings[filterType + 'Enabled'] ? 'enabled' : 'disabled';
             logActivity(filterName + ' filter ' + status, 'info');
+            
+            // Update MTF indicator
+            if (filterType === 'mtf') {
+                updateMTFIndicator();
+            }
             
             // If trading is active, recalculate strategy with new filter settings
             if (isLoggedIn && candleData.length > 0) {
@@ -2449,19 +2488,184 @@
             }
         }
 
+        // Get MTF Period Label
+        function getMTFLabel() {
+            if (candlePeriod === 30) return '3m';
+            if (candlePeriod === 60) return '5m';
+            return '5m';
+        }
+        
+        // Get MTF Period in Seconds
+        function getMTFPeriod() {
+            if (candlePeriod === 30) return 180; // 3 minutes
+            if (candlePeriod === 60) return 300; // 5 minutes
+            return 300;
+        }
+        
+        // Update MTF Indicator Display
+        function updateMTFIndicator() {
+            const indicator = document.getElementById('mtfIndicator');
+            if (indicator) {
+                const label = getMTFLabel();
+                indicator.textContent = 'Auto: ' + label;
+                if (settings.mtfEnabled) {
+                    indicator.classList.remove('disabled');
+                } else {
+                    indicator.classList.add('disabled');
+                }
+            }
+        }
+
+        // Start Contract Tracking System (Smart Duration-Based)
+        function startContractTracking() {
+            // Smart tracking system - no intervals needed
+            // Each contract schedules its own check based on duration
+            logActivity('Smart contract tracking system initialized (duration-based)', 'info');
+        }
+        
+        // Schedule Smart Contract Check
+        function scheduleContractCheck(contractId, durationSeconds, durationUnit) {
+            // Calculate exact wait time based on contract duration
+            let waitTimeMs = 0;
+            
+            if (durationUnit === 't') {
+                // Ticks: each tick is ~1 second, add 5 second buffer
+                waitTimeMs = (durationSeconds * 1000) + 5000;
+            } else if (durationUnit === 's') {
+                // Seconds: add 5 second buffer
+                waitTimeMs = (durationSeconds * 1000) + 5000;
+            } else if (durationUnit === 'm') {
+                // Minutes: convert to ms and add 5 second buffer
+                waitTimeMs = (durationSeconds * 60 * 1000) + 5000;
+            } else if (durationUnit === 'h') {
+                // Hours: convert to ms and add 5 second buffer
+                waitTimeMs = (durationSeconds * 60 * 60 * 1000) + 5000;
+            } else if (durationUnit === 'd') {
+                // Days: convert to ms and add 5 second buffer
+                waitTimeMs = (durationSeconds * 24 * 60 * 60 * 1000) + 5000;
+            }
+            
+            const waitTimeSec = Math.floor(waitTimeMs / 1000);
+            const contract = activeContracts.get(contractId);
+            const mode = contract ? (contract.isVirtual ? 'VIRTUAL' : 'LIVE') : '';
+            
+            logActivity(`⏱️ Scheduled check for contract ${contractId} (${mode}) in ${waitTimeSec}s (${durationSeconds}${durationUnit} + 5s buffer)`, 'info');
+            
+            // Schedule the check
+            const timeoutId = setTimeout(() => {
+                checkContract(contractId);
+            }, waitTimeMs);
+            
+            // Store timeout reference for cleanup
+            contractTimeouts.set(contractId, timeoutId);
+        }
+        
+        // Check Specific Contract
+        function checkContract(contractId) {
+            if (!activeContracts.has(contractId)) {
+                // Contract already removed (completed before scheduled check)
+                return;
+            }
+            
+            const contract = activeContracts.get(contractId);
+            const mode = contract.isVirtual ? 'VIRTUAL' : 'LIVE';
+            
+            logActivity(`🔍 Checking contract ${contractId} (${mode}) - scheduled check triggered`, 'info');
+            
+            // Request contract status
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    proposal_open_contract: 1,
+                    contract_id: contractId
+                }));
+                
+                // Schedule safety check - if contract still not resolved after 30 seconds, force remove
+                const safetyTimeoutId = setTimeout(() => {
+                    if (activeContracts.has(contractId)) {
+                        logActivity(`⚠️ Contract ${contractId} unresolved after safety timeout - forcing removal`, 'error');
+                        removeContract(contractId, 'TIMEOUT');
+                    }
+                }, 30000); // 30 second safety timeout
+                
+                // Store safety timeout (will be cleared when contract is removed)
+                contractTimeouts.set(contractId + '_safety', safetyTimeoutId);
+                
+            } else {
+                logActivity(`⚠️ Cannot check contract ${contractId} - WebSocket disconnected`, 'error');
+                // Remove from tracking if disconnected
+                removeContract(contractId, 'DISCONNECTED');
+            }
+        }
+        
+        // Add Contract to Tracking (Smart Duration-Based)
+        function trackContract(contractId, tradeType, stake, duration, durationUnit) {
+            const contractInfo = {
+                id: contractId,
+                tradeType: tradeType,
+                stake: stake,
+                openTime: Date.now(),
+                isVirtual: isVirtualMode,
+                duration: duration,
+                durationUnit: durationUnit
+            };
+            
+            activeContracts.set(contractId, contractInfo);
+            
+            const mode = isVirtualMode ? 'VIRTUAL' : 'LIVE';
+            logActivity(`📊 Tracking contract ${contractId} (${mode} - ${tradeType}) - Duration: ${duration}${durationUnit}`, 'info');
+            
+            // Schedule smart check based on contract duration
+            scheduleContractCheck(contractId, duration, durationUnit);
+        }
+        
+        // Remove Contract from Tracking
+        function removeContract(contractId, result) {
+            if (activeContracts.has(contractId)) {
+                const contract = activeContracts.get(contractId);
+                const mode = contract.isVirtual ? 'VIRTUAL' : 'LIVE';
+                logActivity(`✓ Contract ${contractId} completed (${mode} - ${result}), removed from tracking`, 'success');
+                activeContracts.delete(contractId);
+                
+                // Clear main scheduled timeout
+                if (contractTimeouts.has(contractId)) {
+                    clearTimeout(contractTimeouts.get(contractId));
+                    contractTimeouts.delete(contractId);
+                }
+                
+                // Clear safety timeout if exists
+                const safetyKey = contractId + '_safety';
+                if (contractTimeouts.has(safetyKey)) {
+                    clearTimeout(contractTimeouts.get(safetyKey));
+                    contractTimeouts.delete(safetyKey);
+                }
+            }
+        }
+        
+        // Clear All Contract Timeouts
+        function clearAllContractTimeouts() {
+            for (const timeoutId of contractTimeouts.values()) {
+                clearTimeout(timeoutId);
+            }
+            contractTimeouts.clear();
+            activeContracts.clear();
+            logActivity('All contract tracking timeouts cleared', 'info');
+        }
+
         // Save Settings
         function saveSettings() {
             settings.stPeriod = parseInt(document.getElementById('stPeriod').value);
             settings.stMultiplier = parseFloat(document.getElementById('stMultiplier').value);
-            settings.adxPeriod = parseInt(document.getElementById('adxPeriod').value);
-            settings.adxThreshold = parseInt(document.getElementById('adxThreshold').value);
             settings.rsiPeriod = parseInt(document.getElementById('rsiPeriod').value);
             settings.stakeAmount = parseFloat(document.getElementById('stakeAmount').value);
             settings.stopLoss = parseFloat(document.getElementById('stopLoss').value);
             settings.takeProfit = parseFloat(document.getElementById('takeProfit').value);
             settings.tradeDuration = parseInt(document.getElementById('tradeDuration').value);
+            settings.virtualLossThreshold = parseInt(document.getElementById('virtualLossThreshold').value);
             settings.reverseMode = reverseMode;
             settings.alternatorMode = alternatorMode;
+            
+            // Update virtual loss threshold in real-time
+            virtualLossThreshold = settings.virtualLossThreshold;
             
             // Save candle period
             const candlePeriodRadio = document.querySelector('input[name="candlePeriod"]:checked');
@@ -2488,19 +2692,23 @@
                 
                 document.getElementById('stPeriod').value = settings.stPeriod;
                 document.getElementById('stMultiplier').value = settings.stMultiplier;
-                document.getElementById('adxPeriod').value = settings.adxPeriod;
-                document.getElementById('adxThreshold').value = settings.adxThreshold;
                 document.getElementById('rsiPeriod').value = settings.rsiPeriod;
                 document.getElementById('stakeAmount').value = settings.stakeAmount;
                 document.getElementById('stopLoss').value = settings.stopLoss || 0;
                 document.getElementById('takeProfit').value = settings.takeProfit || 0;
                 document.getElementById('tradeDuration').value = settings.tradeDuration;
+                document.getElementById('virtualLossThreshold').value = settings.virtualLossThreshold || 3;
                 
-                if (settings.adxEnabled) {
-                    document.getElementById('adxFilterSwitch').classList.add('active');
-                }
                 if (settings.rsiEnabled) {
                     document.getElementById('rsiFilterSwitch').classList.add('active');
+                }
+                if (settings.mtfEnabled) {
+                    document.getElementById('mtfFilterSwitch').classList.add('active');
+                }
+                if (settings.virtualEnabled) {
+                    document.getElementById('virtualFilterSwitch').classList.add('active');
+                    virtualTradingEnabled = true;
+                    isVirtualMode = true;
                 }
                 if (settings.reverseMode) {
                     reverseMode = true;
@@ -2510,6 +2718,9 @@
                     alternatorMode = true;
                     document.getElementById('alternatorModeSwitch').classList.add('active');
                 }
+                
+                // Load virtual loss threshold
+                virtualLossThreshold = settings.virtualLossThreshold || 3;
                 
                 const durationRadio = document.querySelector(`input[name="durationType"][value="${settings.durationType}"]`);
                 if (durationRadio) durationRadio.checked = true;
@@ -2523,11 +2734,15 @@
                 // Load and apply candle period
                 if (settings.candlePeriod) {
                     candlePeriod = settings.candlePeriod;
+                    mtfCandlePeriod = getMTFPeriod(); // Update MTF period
                     const candlePeriodRadio = document.querySelector(`input[name="candlePeriod"][value="${settings.candlePeriod}"]`);
                     if (candlePeriodRadio) {
                         candlePeriodRadio.checked = true;
                     }
                 }
+                
+                // Update MTF indicator
+                updateMTFIndicator();
             }
         }
 
@@ -2553,14 +2768,6 @@
 
         // Logout
         function logout() {
-            // Clean up all open contracts first
-            openContracts.forEach((info, contractId) => {
-                if (info.timeoutId) {
-                    clearTimeout(info.timeoutId);
-                }
-            });
-            openContracts.clear();
-            
             // Unsubscribe from all streams before closing
             if (ws && ws.readyState === WebSocket.OPEN) {
                 if (candleSubscription) {
@@ -2568,13 +2775,11 @@
                         forget: candleSubscription
                     }));
                 }
-                
-                // Unsubscribe from all active contract subscriptions
-                activeContractSubscriptions.forEach((subscriptionId, contractId) => {
+                if (mtfSubscription) {
                     ws.send(JSON.stringify({
-                        forget: subscriptionId
+                        forget: mtfSubscription
                     }));
-                });
+                }
             }
             
             if (ws) {
@@ -2584,10 +2789,15 @@
             clearInterval(timerInterval);
             isLoggedIn = false;
             
+            // Clear contract tracking and all scheduled timeouts
+            clearAllContractTimeouts();
+            logActivity('Contract tracking cleared', 'info');
+            
             // Reset subscription IDs
             candleSubscription = null;
             currentCandleSymbol = null;
-            activeContractSubscriptions.clear();
+            mtfSubscription = null;
+            currentMtfCandleSymbol = null;
             
             // Reset proposal and trading state
             proposalId = null;
@@ -2603,6 +2813,14 @@
             totalCandleCount = 0;
             candleCollectionStartTime = null;
             candleCollectionComplete = false;
+            
+            // Reset MTF candle building
+            mtfCandleData = [];
+            mtfCurrentCandle = null;
+            mtfCandleStartTime = null;
+            
+            // Note: Keep virtual trading state intact
+            // virtualConsecutiveLosses, isVirtualMode remain unchanged
             
             // Reset UI
             document.getElementById('apiToken').disabled = false;
