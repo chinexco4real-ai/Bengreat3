@@ -2332,22 +2332,26 @@
                 trade.result = profit > 0 ? 'WIN (+' + profit.toFixed(2) + ')' : 'LOSS (' + profit.toFixed(2) + ')';
                 trade.profit = profit;
                 
-                // Track virtual trading losses
+                // Track virtual trading losses (STRICT enforcement)
                 if (virtualTradingEnabled && trade.isVirtual) {
                     if (profit < 0) {
                         virtualConsecutiveLosses++;
-                        logActivity('Virtual loss #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold + ' (not counted in statistics)', 'error');
+                        logActivity('Virtual LOSS #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold + ' required (not counted in statistics)', 'error');
                         
-                        // Check if threshold reached
+                        // STRICT: Check if EXACTLY threshold reached
                         if (virtualConsecutiveLosses >= virtualLossThreshold) {
                             isVirtualMode = false;
-                            logActivity('🔥 Virtual loss threshold reached! Switching to LIVE trading mode', 'success');
+                            logActivity('🔥 EXACTLY ' + virtualLossThreshold + ' consecutive virtual losses reached! Switching to LIVE trading mode', 'success');
                             updateModeBadges();
+                        } else {
+                            const remaining = virtualLossThreshold - virtualConsecutiveLosses;
+                            logActivity('Need ' + remaining + ' more consecutive loss(es) to switch to LIVE', 'info');
                         }
                     } else {
-                        // Reset on win
+                        // WIN resets counter
+                        const oldCount = virtualConsecutiveLosses;
                         virtualConsecutiveLosses = 0;
-                        logActivity('Virtual win! Loss counter reset (not counted in statistics)', 'success');
+                        logActivity('Virtual WIN! Loss counter RESET from ' + oldCount + ' to 0 (not counted in statistics)', 'success');
                     }
                     updateModeBadges();
                 }
@@ -2465,41 +2469,49 @@
             
             // Check Stop Loss (must be greater than 0 to be active)
             if (settings.stopLoss > 0 && totalPL <= -settings.stopLoss) {
-                logActivity('🛑 STOP LOSS TRIGGERED! LIVE P/L: ' + totalPL.toFixed(2) + ' | Stop Loss: -' + settings.stopLoss, 'error');
-                logActivity('🛑 Auto trading stopped to prevent further losses', 'error');
+                logActivity('═══════════════════════════════════════════════', 'error');
+                logActivity('🛑 STOP LOSS TRIGGERED!', 'error');
+                logActivity('═══════════════════════════════════════════════', 'error');
+                logActivity('LIVE P/L: ' + totalPL.toFixed(2) + ' | Stop Loss: -' + settings.stopLoss, 'error');
+                logActivity('Auto trading STOPPED to prevent further losses', 'error');
                 
                 // Stop auto trading
                 toggleAutoTrade();
                 
-                // Show alert to user
-                const timerMsg = timerFilterEnabled ? '\n\nAuto-restart timer will begin countdown.' : '';
-                alert('STOP LOSS TRIGGERED!\n\nLIVE Total P/L: ' + totalPL.toFixed(2) + '\nStop Loss Limit: -' + settings.stopLoss + '\n\nAuto trading has been stopped.' + timerMsg);
-                
                 // Start restart timer if enabled
                 if (timerFilterEnabled) {
+                    logActivity('⏰ Auto-restart timer enabled - countdown will begin', 'info');
+                    logActivity('Delay: ' + restartDelay + ' minute(s)', 'info');
                     startRestartTimer();
+                } else {
+                    logActivity('Auto-restart timer disabled - manual restart required', 'info');
                 }
                 
+                logActivity('═══════════════════════════════════════════════', 'error');
                 return;
             }
             
             // Check Take Profit (must be greater than 0 to be active)
             if (settings.takeProfit > 0 && totalPL >= settings.takeProfit) {
-                logActivity('🎯 TAKE PROFIT REACHED! LIVE P/L: ' + totalPL.toFixed(2) + ' | Take Profit: +' + settings.takeProfit, 'success');
-                logActivity('🎯 Auto trading stopped to secure profits', 'success');
+                logActivity('═══════════════════════════════════════════════', 'success');
+                logActivity('🎯 TAKE PROFIT REACHED!', 'success');
+                logActivity('═══════════════════════════════════════════════', 'success');
+                logActivity('LIVE P/L: ' + totalPL.toFixed(2) + ' | Take Profit: +' + settings.takeProfit, 'success');
+                logActivity('Auto trading STOPPED to secure profits', 'success');
                 
                 // Stop auto trading
                 toggleAutoTrade();
                 
-                // Show alert to user
-                const timerMsg = timerFilterEnabled ? '\n\nAuto-restart timer will begin countdown.' : '';
-                alert('TAKE PROFIT REACHED!\n\nLIVE Total P/L: ' + totalPL.toFixed(2) + '\nTake Profit Target: +' + settings.takeProfit + '\n\nAuto trading has been stopped. Congratulations!' + timerMsg);
-                
                 // Start restart timer if enabled
                 if (timerFilterEnabled) {
+                    logActivity('⏰ Auto-restart timer enabled - countdown will begin', 'info');
+                    logActivity('Delay: ' + restartDelay + ' minute(s)', 'info');
                     startRestartTimer();
+                } else {
+                    logActivity('Auto-restart timer disabled - manual restart required', 'info');
                 }
                 
+                logActivity('═══════════════════════════════════════════════', 'success');
                 return;
             }
             
@@ -2775,26 +2787,41 @@
         // Restart Trading (called when timer elapses)
         function restartTrading() {
             logActivity('⏰ Timer elapsed - Restarting trading cycle', 'success');
+            logActivity('═══════════════════════════════════════════════', 'info');
+            logActivity('🔄 NEW TRADING CYCLE STARTING', 'success');
+            logActivity('═══════════════════════════════════════════════', 'info');
             
             // Hide countdown
             const display = document.getElementById('restartCountdownDisplay');
             display.style.display = 'none';
             
-            // Reset virtual trading if enabled
+            // CLEAR TRADE HISTORY AND STATISTICS
+            logActivity('🗑️ Clearing ALL trade history and statistics for fresh cycle', 'info');
+            tradeHistory = [];
+            updateTradeHistory();
+            updateStatistics();
+            logActivity('✓ History cleared - Starting from zero', 'success');
+            
+            // ENFORCE virtual trading mode if enabled (CRITICAL for auto-restart)
             if (virtualTradingEnabled) {
                 isVirtualMode = true;
                 virtualConsecutiveLosses = 0;
-                logActivity('🔄 Virtual mode re-enabled for new cycle', 'info');
+                logActivity('🔄 VIRTUAL MODE ENFORCED for new cycle', 'success');
+                logActivity('Virtual loss threshold: ' + virtualLossThreshold + ' consecutive losses', 'info');
                 updateModeBadges();
+            } else {
+                logActivity('⚠️ Virtual trading not enabled - starting in LIVE mode', 'info');
             }
             
-            // Start auto trading if not already active
+            // Start auto trading
             if (!isAutoTrading) {
                 toggleAutoTrade();
-                logActivity('🔄 Auto trading re-started', 'success');
+                logActivity('🔄 Auto trading STARTED with clean slate', 'success');
             } else {
                 logActivity('🔄 Auto trading already active - continuing', 'info');
             }
+            
+            logActivity('═══════════════════════════════════════════════', 'info');
         }
 
         // Start Contract Tracking System (Smart Duration-Based)
