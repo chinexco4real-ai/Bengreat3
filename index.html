@@ -1101,7 +1101,7 @@
 
             <!-- Statistics -->
             <div class="panel">
-                <h3 class="panel-title">Trading Statistics</h3>
+                <h3 class="panel-title">Trading Statistics (LIVE Trades Only)</h3>
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-label">Total Trades</div>
@@ -1120,11 +1120,25 @@
                         <div class="stat-value" id="totalPL">0.00</div>
                     </div>
                 </div>
+                
+                <!-- Stop Loss / Take Profit Indicators -->
+                <div id="slTpIndicators" style="margin-top: 15px; display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div id="stopLossIndicator" style="padding: 10px; background: rgba(244, 67, 54, 0.1); border: 1px solid #f44336; border-radius: 6px;">
+                            <div style="font-size: 11px; color: #f44336; margin-bottom: 5px;">STOP LOSS</div>
+                            <div style="font-size: 14px; font-weight: 600; color: #f44336;" id="slStatus">Not Set</div>
+                        </div>
+                        <div id="takeProfitIndicator" style="padding: 10px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4caf50; border-radius: 6px;">
+                            <div style="font-size: 11px; color: #4caf50; margin-bottom: 5px;">TAKE PROFIT</div>
+                            <div style="font-size: 14px; font-weight: 600; color: #4caf50;" id="tpStatus">Not Set</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Trade History -->
             <div class="panel">
-                <h3 class="panel-title">Trade History</h3>
+                <h3 class="panel-title">Trade History (All Trades - Virtual [V] & Live)</h3>
                 <div class="table-container">
                     <table>
                         <thead>
@@ -2272,7 +2286,7 @@
                 if (virtualTradingEnabled && trade.isVirtual) {
                     if (profit < 0) {
                         virtualConsecutiveLosses++;
-                        logActivity('Virtual loss #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold, 'error');
+                        logActivity('Virtual loss #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold + ' (not counted in statistics)', 'error');
                         
                         // Check if threshold reached
                         if (virtualConsecutiveLosses >= virtualLossThreshold) {
@@ -2283,13 +2297,16 @@
                     } else {
                         // Reset on win
                         virtualConsecutiveLosses = 0;
-                        logActivity('Virtual win! Loss counter reset', 'success');
+                        logActivity('Virtual win! Loss counter reset (not counted in statistics)', 'success');
                     }
                     updateModeBadges();
                 }
                 
                 updateTradeHistory();
                 updateStatistics();
+                
+                // Check Stop Loss and Take Profit
+                checkStopLossTakeProfit(profit);
                 
                 const mode = trade.isVirtual ? '[VIRTUAL]' : '[LIVE]';
                 logActivity('Trade closed ' + mode + ': ' + trade.result, profit > 0 ? 'success' : 'error');
@@ -2320,9 +2337,10 @@
             }).join('');
         }
 
-        // Update Statistics
+        // Update Statistics (LIVE TRADES ONLY - Virtual trades excluded)
         function updateStatistics() {
-            const completedTrades = tradeHistory.filter(t => t.profit !== undefined);
+            // Filter for LIVE trades only (exclude virtual)
+            const completedTrades = tradeHistory.filter(t => t.profit !== undefined && !t.isVirtual);
             const wins = completedTrades.filter(t => t.profit > 0);
             const losses = completedTrades.filter(t => t.profit < 0);
             const totalPL = completedTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
@@ -2334,6 +2352,108 @@
             const plElement = document.getElementById('totalPL');
             plElement.textContent = totalPL.toFixed(2);
             plElement.className = 'stat-value ' + (totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : '');
+            
+            // Update Stop Loss / Take Profit indicators (LIVE trades only)
+            updateSLTPIndicators(totalPL);
+            
+            // Return total P/L for stop loss/take profit checking
+            return totalPL;
+        }
+        
+        // Update Stop Loss and Take Profit Indicators
+        function updateSLTPIndicators(totalPL) {
+            const container = document.getElementById('slTpIndicators');
+            const slStatus = document.getElementById('slStatus');
+            const tpStatus = document.getElementById('tpStatus');
+            
+            // Show container if either SL or TP is set
+            if (settings.stopLoss > 0 || settings.takeProfit > 0) {
+                container.style.display = 'block';
+                
+                // Update Stop Loss
+                if (settings.stopLoss > 0) {
+                    const distance = totalPL + settings.stopLoss;
+                    const percentage = ((distance / settings.stopLoss) * 100).toFixed(0);
+                    slStatus.textContent = '-' + settings.stopLoss + ' (' + distance.toFixed(2) + ' away)';
+                    
+                    // Change color if getting close
+                    if (distance < settings.stopLoss * 0.2) {
+                        slStatus.style.color = '#ff1744';
+                        slStatus.style.fontWeight = '700';
+                    }
+                } else {
+                    slStatus.textContent = 'Not Set';
+                }
+                
+                // Update Take Profit
+                if (settings.takeProfit > 0) {
+                    const distance = settings.takeProfit - totalPL;
+                    const percentage = ((totalPL / settings.takeProfit) * 100).toFixed(0);
+                    tpStatus.textContent = '+' + settings.takeProfit + ' (' + distance.toFixed(2) + ' away)';
+                    
+                    // Change color if getting close
+                    if (distance < settings.takeProfit * 0.2) {
+                        tpStatus.style.color = '#00e676';
+                        tpStatus.style.fontWeight = '700';
+                    }
+                } else {
+                    tpStatus.textContent = 'Not Set';
+                }
+            } else {
+                container.style.display = 'none';
+            }
+        }
+        
+        // Check Stop Loss and Take Profit (LIVE TRADES ONLY)
+        function checkStopLossTakeProfit(lastTradeProfit) {
+            // Only check if auto trading is active
+            if (!isAutoTrading) return;
+            
+            // Get current total P/L from LIVE trades only
+            const completedTrades = tradeHistory.filter(t => t.profit !== undefined && !t.isVirtual);
+            const totalPL = completedTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
+            
+            // Check Stop Loss (must be greater than 0 to be active)
+            if (settings.stopLoss > 0 && totalPL <= -settings.stopLoss) {
+                logActivity('🛑 STOP LOSS TRIGGERED! LIVE P/L: ' + totalPL.toFixed(2) + ' | Stop Loss: -' + settings.stopLoss, 'error');
+                logActivity('🛑 Auto trading stopped to prevent further losses', 'error');
+                
+                // Stop auto trading
+                toggleAutoTrade();
+                
+                // Show alert to user
+                alert('STOP LOSS TRIGGERED!\n\nLIVE Total P/L: ' + totalPL.toFixed(2) + '\nStop Loss Limit: -' + settings.stopLoss + '\n\nAuto trading has been stopped.');
+                return;
+            }
+            
+            // Check Take Profit (must be greater than 0 to be active)
+            if (settings.takeProfit > 0 && totalPL >= settings.takeProfit) {
+                logActivity('🎯 TAKE PROFIT REACHED! LIVE P/L: ' + totalPL.toFixed(2) + ' | Take Profit: +' + settings.takeProfit, 'success');
+                logActivity('🎯 Auto trading stopped to secure profits', 'success');
+                
+                // Stop auto trading
+                toggleAutoTrade();
+                
+                // Show alert to user
+                alert('TAKE PROFIT REACHED!\n\nLIVE Total P/L: ' + totalPL.toFixed(2) + '\nTake Profit Target: +' + settings.takeProfit + '\n\nAuto trading has been stopped. Congratulations!');
+                return;
+            }
+            
+            // Log status if either is active
+            if (settings.stopLoss > 0 || settings.takeProfit > 0) {
+                let status = 'LIVE P/L: ' + totalPL.toFixed(2);
+                if (settings.stopLoss > 0) {
+                    const remaining = Math.abs(totalPL + settings.stopLoss);
+                    status += ' | SL: -' + settings.stopLoss + ' (';
+                    status += remaining.toFixed(2) + ' away)';
+                }
+                if (settings.takeProfit > 0) {
+                    const remaining = settings.takeProfit - totalPL;
+                    status += ' | TP: +' + settings.takeProfit + ' (';
+                    status += remaining.toFixed(2) + ' away)';
+                }
+                logActivity(status, 'info');
+            }
         }
 
         // Change Market
@@ -2677,6 +2797,9 @@
             
             // Update badges to reflect current filter settings
             updateModeBadges();
+            
+            // Update SL/TP indicators
+            updateStatistics();
             
             // Apply changes in real-time if trading is active
             if (isLoggedIn && candleData.length > 0) {
