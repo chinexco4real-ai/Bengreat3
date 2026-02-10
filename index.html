@@ -542,6 +542,17 @@
             50% { opacity: 0.7; }
         }
 
+        .mode-badge.timer {
+            background: #ff9800;
+            color: white;
+            animation: pulse-timer 1s infinite;
+        }
+
+        @keyframes pulse-timer {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
         .virtual-indicator {
             display: inline-block;
             padding: 6px 12px;
@@ -997,6 +1008,19 @@
                         <label>Switch to Live After Losses</label>
                         <input type="number" id="virtualLossThreshold" value="3" min="1" max="20" onchange="saveSettings()">
                     </div>
+
+                    <div class="setting-item">
+                        <label>Filter 4: Auto-Restart Timer</label>
+                        <div class="toggle-switch">
+                            <div class="switch" id="timerFilterSwitch" onclick="toggleFilter('timer')"></div>
+                            <span>Enable Auto-Restart After SL/TP</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>Restart Delay (Minutes)</label>
+                        <input type="number" id="restartDelay" value="5" min="1" max="1440" onchange="saveSettings()">
+                    </div>
                 </div>
 
                 <!-- Signal & Control Panel -->
@@ -1018,6 +1042,13 @@
                             <div class="progress-text" id="progressText"></div>
                         </div>
                         <div class="mode-badges" id="modeBadges"></div>
+                        
+                        <!-- Restart Timer Countdown -->
+                        <div id="restartCountdownDisplay" style="display: none; margin-top: 15px; padding: 15px; background: rgba(255, 152, 0, 0.2); border: 2px solid #ff9800; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 12px; color: #ff9800; margin-bottom: 5px; font-weight: 600;">AUTO-RESTART COUNTDOWN</div>
+                            <div style="font-size: 28px; font-weight: 700; color: #ff9800;" id="countdownTimer">00:00</div>
+                            <div style="font-size: 11px; color: #ff9800; margin-top: 5px;">Bot will restart automatically</div>
+                        </div>
                     </div>
 
                     <div class="settings-grid">
@@ -1228,6 +1259,13 @@
         let virtualLossThreshold = 3;
         let virtualTradeHistory = [];
         
+        // Timer Filter variables
+        let timerFilterEnabled = false;
+        let restartDelay = 5; // minutes
+        let restartTimer = null;
+        let restartCountdown = 0;
+        let countdownInterval = null;
+        
         // Contract Tracking System - Smart Duration-Based
         let activeContracts = new Map(); // Map of contract_id -> {contract details + timeout}
         let contractTimeouts = new Map(); // Map of contract_id -> timeout reference
@@ -1255,6 +1293,8 @@
             mtfEnabled: false,
             virtualEnabled: false,
             virtualLossThreshold: 3,
+            timerEnabled: false,
+            restartDelay: 5,
             marketSymbol: 'R_10',
             stakeAmount: 1,
             stopLoss: 0,
@@ -1300,6 +1340,16 @@
                 const badge = document.createElement('div');
                 badge.className = 'mode-badge virtual';
                 badge.textContent = 'Virtual Mode (Losses: ' + virtualConsecutiveLosses + '/' + virtualLossThreshold + ')';
+                container.appendChild(badge);
+            }
+            
+            // Show Timer badge if countdown is active
+            if (timerFilterEnabled && restartCountdown > 0) {
+                const badge = document.createElement('div');
+                badge.className = 'mode-badge timer';
+                const minutes = Math.floor(restartCountdown / 60);
+                const seconds = restartCountdown % 60;
+                badge.textContent = 'Auto-Restart: ' + minutes + 'm ' + seconds + 's';
                 container.appendChild(badge);
             }
             
@@ -2422,7 +2472,14 @@
                 toggleAutoTrade();
                 
                 // Show alert to user
-                alert('STOP LOSS TRIGGERED!\n\nLIVE Total P/L: ' + totalPL.toFixed(2) + '\nStop Loss Limit: -' + settings.stopLoss + '\n\nAuto trading has been stopped.');
+                const timerMsg = timerFilterEnabled ? '\n\nAuto-restart timer will begin countdown.' : '';
+                alert('STOP LOSS TRIGGERED!\n\nLIVE Total P/L: ' + totalPL.toFixed(2) + '\nStop Loss Limit: -' + settings.stopLoss + '\n\nAuto trading has been stopped.' + timerMsg);
+                
+                // Start restart timer if enabled
+                if (timerFilterEnabled) {
+                    startRestartTimer();
+                }
+                
                 return;
             }
             
@@ -2435,7 +2492,14 @@
                 toggleAutoTrade();
                 
                 // Show alert to user
-                alert('TAKE PROFIT REACHED!\n\nLIVE Total P/L: ' + totalPL.toFixed(2) + '\nTake Profit Target: +' + settings.takeProfit + '\n\nAuto trading has been stopped. Congratulations!');
+                const timerMsg = timerFilterEnabled ? '\n\nAuto-restart timer will begin countdown.' : '';
+                alert('TAKE PROFIT REACHED!\n\nLIVE Total P/L: ' + totalPL.toFixed(2) + '\nTake Profit Target: +' + settings.takeProfit + '\n\nAuto trading has been stopped. Congratulations!' + timerMsg);
+                
+                // Start restart timer if enabled
+                if (timerFilterEnabled) {
+                    startRestartTimer();
+                }
+                
                 return;
             }
             
@@ -2571,6 +2635,13 @@
                     virtualConsecutiveLosses = 0;
                     logActivity('Virtual trading disabled', 'info');
                 }
+                
+                // If disabling timer
+                if (filterType === 'timer') {
+                    timerFilterEnabled = false;
+                    stopRestartTimer();
+                    logActivity('Auto-restart timer disabled', 'info');
+                }
             } else {
                 switchElement.classList.add('active');
                 settings[filterType + 'Enabled'] = true;
@@ -2586,6 +2657,12 @@
                     isVirtualMode = true;
                     virtualConsecutiveLosses = 0;
                     logActivity('Virtual trading enabled - starting in VIRTUAL mode', 'info');
+                }
+                
+                // If enabling timer
+                if (filterType === 'timer') {
+                    timerFilterEnabled = true;
+                    logActivity('Auto-restart timer enabled - will restart after SL/TP triggers', 'info');
                 }
             }
             
@@ -2633,6 +2710,90 @@
                 } else {
                     indicator.classList.add('disabled');
                 }
+            }
+        }
+
+        // Start Restart Timer (after SL/TP trigger)
+        function startRestartTimer() {
+            if (!timerFilterEnabled) return;
+            
+            // Stop any existing timer
+            stopRestartTimer();
+            
+            // Set countdown time in seconds
+            restartCountdown = restartDelay * 60;
+            
+            // Show countdown display
+            const display = document.getElementById('restartCountdownDisplay');
+            display.style.display = 'block';
+            
+            logActivity('⏰ Auto-restart timer started: ' + restartDelay + ' minute(s) countdown', 'info');
+            
+            // Update countdown display immediately
+            updateCountdownDisplay();
+            
+            // Start countdown interval (update every second)
+            countdownInterval = setInterval(() => {
+                restartCountdown--;
+                updateCountdownDisplay();
+                
+                if (restartCountdown <= 0) {
+                    // Time elapsed - restart trading
+                    clearInterval(countdownInterval);
+                    restartTrading();
+                }
+            }, 1000);
+        }
+        
+        // Stop Restart Timer
+        function stopRestartTimer() {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            
+            const display = document.getElementById('restartCountdownDisplay');
+            display.style.display = 'none';
+            
+            restartCountdown = 0;
+        }
+        
+        // Update Countdown Display
+        function updateCountdownDisplay() {
+            const minutes = Math.floor(restartCountdown / 60);
+            const seconds = restartCountdown % 60;
+            const timeString = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
+            
+            document.getElementById('countdownTimer').textContent = timeString;
+            
+            // Log every minute
+            if (restartCountdown % 60 === 0 && restartCountdown > 0) {
+                logActivity('⏰ Restart in ' + minutes + ' minute(s)', 'info');
+            }
+        }
+        
+        // Restart Trading (called when timer elapses)
+        function restartTrading() {
+            logActivity('⏰ Timer elapsed - Restarting trading cycle', 'success');
+            
+            // Hide countdown
+            const display = document.getElementById('restartCountdownDisplay');
+            display.style.display = 'none';
+            
+            // Reset virtual trading if enabled
+            if (virtualTradingEnabled) {
+                isVirtualMode = true;
+                virtualConsecutiveLosses = 0;
+                logActivity('🔄 Virtual mode re-enabled for new cycle', 'info');
+                updateModeBadges();
+            }
+            
+            // Start auto trading if not already active
+            if (!isAutoTrading) {
+                toggleAutoTrade();
+                logActivity('🔄 Auto trading re-started', 'success');
+            } else {
+                logActivity('🔄 Auto trading already active - continuing', 'info');
             }
         }
 
@@ -2781,11 +2942,15 @@
             settings.takeProfit = parseFloat(document.getElementById('takeProfit').value);
             settings.tradeDuration = parseInt(document.getElementById('tradeDuration').value);
             settings.virtualLossThreshold = parseInt(document.getElementById('virtualLossThreshold').value);
+            settings.restartDelay = parseInt(document.getElementById('restartDelay').value);
             settings.reverseMode = reverseMode;
             settings.alternatorMode = alternatorMode;
             
             // Update virtual loss threshold in real-time
             virtualLossThreshold = settings.virtualLossThreshold;
+            
+            // Update restart delay in real-time
+            restartDelay = settings.restartDelay;
             
             // Save candle period
             const candlePeriodRadio = document.querySelector('input[name="candlePeriod"]:checked');
@@ -2821,6 +2986,7 @@
                 document.getElementById('takeProfit').value = settings.takeProfit || 0;
                 document.getElementById('tradeDuration').value = settings.tradeDuration;
                 document.getElementById('virtualLossThreshold').value = settings.virtualLossThreshold || 3;
+                document.getElementById('restartDelay').value = settings.restartDelay || 5;
                 
                 if (settings.rsiEnabled) {
                     document.getElementById('rsiFilterSwitch').classList.add('active');
@@ -2833,6 +2999,10 @@
                     virtualTradingEnabled = true;
                     isVirtualMode = true;
                 }
+                if (settings.timerEnabled) {
+                    document.getElementById('timerFilterSwitch').classList.add('active');
+                    timerFilterEnabled = true;
+                }
                 if (settings.reverseMode) {
                     reverseMode = true;
                     document.getElementById('reverseModeSwitch').classList.add('active');
@@ -2844,6 +3014,9 @@
                 
                 // Load virtual loss threshold
                 virtualLossThreshold = settings.virtualLossThreshold || 3;
+                
+                // Load restart delay
+                restartDelay = settings.restartDelay || 5;
                 
                 const durationRadio = document.querySelector(`input[name="durationType"][value="${settings.durationType}"]`);
                 if (durationRadio) durationRadio.checked = true;
@@ -2911,6 +3084,9 @@
             
             clearInterval(timerInterval);
             isLoggedIn = false;
+            
+            // Stop restart timer if active
+            stopRestartTimer();
             
             // Clear contract tracking and all scheduled timeouts
             clearAllContractTimeouts();
