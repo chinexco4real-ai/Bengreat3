@@ -2332,28 +2332,45 @@
                 trade.result = profit > 0 ? 'WIN (+' + profit.toFixed(2) + ')' : 'LOSS (' + profit.toFixed(2) + ')';
                 trade.profit = profit;
                 
-                // Track virtual trading losses (STRICT enforcement)
-                if (virtualTradingEnabled && trade.isVirtual) {
+                // Track virtual trading losses (STRICT enforcement - only if STILL in virtual mode)
+                if (virtualTradingEnabled && trade.isVirtual && isVirtualMode) {
+                    // CRITICAL: Only track if we're CURRENTLY in virtual mode
+                    // This prevents counting losses from old virtual trades that close after switching to LIVE
+                    
+                    const timestamp = new Date().toISOString();
+                    
                     if (profit < 0) {
+                        // LOSS - increment counter
                         virtualConsecutiveLosses++;
-                        logActivity('Virtual LOSS #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold + ' required (not counted in statistics)', 'error');
+                        logActivity('[' + timestamp + '] Virtual LOSS #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold + ' required (Contract: ' + trade.contractId + ')', 'error');
                         
                         // STRICT: Check if EXACTLY threshold reached
                         if (virtualConsecutiveLosses >= virtualLossThreshold) {
                             isVirtualMode = false;
-                            logActivity('🔥 EXACTLY ' + virtualLossThreshold + ' consecutive virtual losses reached! Switching to LIVE trading mode', 'success');
+                            logActivity('[' + timestamp + '] 🔥 EXACTLY ' + virtualLossThreshold + ' consecutive virtual losses! SWITCHING TO LIVE MODE NOW', 'success');
+                            logActivity('═══ All NEW trades will be LIVE ═══', 'success');
                             updateModeBadges();
                         } else {
                             const remaining = virtualLossThreshold - virtualConsecutiveLosses;
-                            logActivity('Need ' + remaining + ' more consecutive loss(es) to switch to LIVE', 'info');
+                            logActivity('[' + timestamp + '] Need ' + remaining + ' more CONSECUTIVE loss(es) to switch to LIVE', 'info');
                         }
-                    } else {
-                        // WIN resets counter
+                    } else if (profit > 0) {
+                        // WIN - RESET counter to ZERO
                         const oldCount = virtualConsecutiveLosses;
                         virtualConsecutiveLosses = 0;
-                        logActivity('Virtual WIN! Loss counter RESET from ' + oldCount + ' to 0 (not counted in statistics)', 'success');
+                        logActivity('[' + timestamp + '] ✓ Virtual WIN! CONSECUTIVE loss counter RESET ' + oldCount + ' → 0 (Contract: ' + trade.contractId + ')', 'success');
+                        if (oldCount > 0) {
+                            logActivity('Starting fresh - need ' + virtualLossThreshold + ' NEW consecutive losses', 'info');
+                        }
+                    } else {
+                        // profit === 0 (tie/draw) - treat as loss
+                        virtualConsecutiveLosses++;
+                        logActivity('[' + timestamp + '] Virtual TIE (0.00) = LOSS #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold, 'error');
                     }
                     updateModeBadges();
+                } else if (trade.isVirtual && !isVirtualMode) {
+                    // This was a virtual trade but we already switched to LIVE mode
+                    logActivity('Virtual trade closed but already in LIVE mode - not counting (Contract: ' + trade.contractId + ')', 'info');
                 }
                 
                 updateTradeHistory();
