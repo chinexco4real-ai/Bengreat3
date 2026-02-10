@@ -1269,6 +1269,7 @@
         // Contract Tracking System - Smart Duration-Based
         let activeContracts = new Map(); // Map of contract_id -> {contract details + timeout}
         let contractTimeouts = new Map(); // Map of contract_id -> timeout reference
+        let pendingContractChecks = new Set(); // FIX #6: Queue for contracts needing check after reconnection
 
         // Market names mapping
         const marketNames = {
@@ -1559,9 +1560,49 @@
             // Authorization
             if (data.authorize) {
                 accountInfo = data.authorize;
+                
+                // CRITICAL FIX #1: Initialize virtual mode if enabled
+                if (virtualTradingEnabled) {
+                    // Try to restore saved virtual state first
+                    const savedVirtualState = localStorage.getItem('virtualModeState');
+                    if (savedVirtualState) {
+                        try {
+                            const state = JSON.parse(savedVirtualState);
+                            isVirtualMode = state.isVirtualMode;
+                            virtualConsecutiveLosses = state.virtualConsecutiveLosses || 0;
+                            logActivity('🔄 Restored virtual mode state: ' + (isVirtualMode ? 'VIRTUAL' : 'LIVE') + ' (Losses: ' + virtualConsecutiveLosses + ')', 'info');
+                        } catch (e) {
+                            // If parsing fails, default to virtual mode
+                            isVirtualMode = true;
+                            virtualConsecutiveLosses = 0;
+                        }
+                    } else {
+                        // No saved state - start fresh in virtual mode
+                        isVirtualMode = true;
+                        virtualConsecutiveLosses = 0;
+                    }
+                    
+                    logActivity('🛡️ Virtual Trading ENABLED - Starting in ' + (isVirtualMode ? 'VIRTUAL' : 'LIVE') + ' mode', 'success');
+                    if (isVirtualMode) {
+                        logActivity('Safe trading active - will switch to LIVE after ' + virtualLossThreshold + ' consecutive virtual losses', 'info');
+                    }
+                    updateModeBadges();
+                } else {
+                    // Virtual trading disabled - always start in live mode
+                    isVirtualMode = false;
+                    virtualConsecutiveLosses = 0;
+                }
+                
                 updateAccountInfo();
                 subscribeToCandles(); // This now subscribes to live ticks for both price and candle building
                 enableTrading();
+                
+                // FIX #6: Process any pending contract checks after reconnection
+                if (pendingContractChecks.size > 0) {
+                    setTimeout(() => {
+                        processPendingContractChecks();
+                    }, 1000); // Wait 1 second after authorization to process pending checks
+                }
             }
 
             // Balance update
@@ -2189,21 +2230,25 @@
         }
 
         // Execute Trade
+        // Execute Trade
         function executeTrade(type) {
             if (!ws || ws.readyState !== WebSocket.OPEN) {
                 logActivity('Cannot trade: Not connected', 'error');
                 return;
             }
             
-            // Log current trading mode
-            if (isVirtualMode) {
-                logActivity('⚡ Executing VIRTUAL trade (Losses: ' + virtualConsecutiveLosses + '/' + virtualLossThreshold + ')', 'info');
-            } else {
-                logActivity('⚡ Executing LIVE trade', 'info');
-            }
-
             // Apply trading modes
             const finalType = applyTradingModes(type);
+            
+            // CRITICAL FIX #7: Handle VIRTUAL trades differently - simulate locally without API call
+            if (isVirtualMode) {
+                logActivity('⚡ Executing VIRTUAL trade (Losses: ' + virtualConsecutiveLosses + '/' + virtualLossThreshold + ') - SIMULATED, NO REAL MONEY', 'info');
+                simulateVirtualTrade(finalType);
+                return; // Don't send to API for virtual trades
+            }
+            
+            // LIVE MODE - Send actual trade to Deriv API
+            logActivity('⚡ Executing LIVE trade - REAL MONEY', 'info');
             
             // Store the final trade type for later use
             pendingTradeType = finalType;
@@ -2226,14 +2271,120 @@
                 type: finalType
             };
 
-            // Send proposal request
+            // Send proposal request to Deriv API
             ws.send(JSON.stringify(proposalRequest));
             
-            const mode = isVirtualMode ? '[VIRTUAL]' : '[LIVE]';
-            logActivity('Requesting proposal ' + mode + ' for ' + finalType + ' on ' + marketNames[settings.marketSymbol], 'info');
+            logActivity('Requesting proposal [LIVE] for ' + finalType + ' on ' + marketNames[settings.marketSymbol], 'info');
             
             // Trade will be executed automatically when proposal response is received
             // See handleWebSocketMessage() -> if (data.proposal) section
+        }
+        
+        // Simulate Virtual Trade (no API call, local simulation only)
+        function simulateVirtualTrade(finalType) {
+            // Generate a fake contract ID for tracking
+            const virtualContractId = 'VIRTUAL_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            
+            // Create virtual trade entry
+            const virtualTrade = {
+                sn: tradeHistory.length + 1,
+                time: new Date().toLocaleTimeString(),
+                market: settings.marketSymbol,
+                type: (finalType === 'CALL' ? 'BUY (CALL)' : 'SELL (PUT)'),
+                stake: settings.stakeAmount,
+                contractId: virtualContractId,
+                result: 'PENDING',
+                isVirtual: true,
+                virtualStartPrice: currentPrice,
+                virtualStartTime: Date.now(),
+                virtualType: finalType,
+                virtualDuration: settings.tradeDuration,
+                virtualDurationUnit: settings.durationType
+            };
+            
+            tradeHistory.unshift(virtualTrade);
+            
+            // Cap trade history at 500 trades maximum
+            if (tradeHistory.length > 500) {
+                tradeHistory = tradeHistory.slice(0, 500);
+            }
+            
+            updateTradeHistory();
+            
+            logActivity('Virtual trade simulated: ' + virtualTrade.type + ' at price ' + currentPrice.toFixed(2) + ' (Contract: ' + virtualContractId + ')', 'info');
+            
+            // Schedule virtual trade result calculation
+            scheduleVirtualTradeResult(virtualTrade);
+        }
+        
+        // Schedule Virtual Trade Result Calculation
+        function scheduleVirtualTradeResult(virtualTrade) {
+            let durationMs = 0;
+            
+            // Calculate duration in milliseconds
+            if (virtualTrade.virtualDurationUnit === 't') {
+                durationMs = virtualTrade.virtualDuration * 2000; // Assume 2 seconds per tick
+            } else if (virtualTrade.virtualDurationUnit === 's') {
+                durationMs = virtualTrade.virtualDuration * 1000;
+            } else if (virtualTrade.virtualDurationUnit === 'm') {
+                durationMs = virtualTrade.virtualDuration * 60 * 1000;
+            } else if (virtualTrade.virtualDurationUnit === 'h') {
+                durationMs = virtualTrade.virtualDuration * 60 * 60 * 1000;
+            } else if (virtualTrade.virtualDurationUnit === 'd') {
+                durationMs = virtualTrade.virtualDuration * 24 * 60 * 60 * 1000;
+            }
+            
+            // Add 2 second buffer
+            durationMs += 2000;
+            
+            const timeoutId = setTimeout(() => {
+                calculateVirtualTradeResult(virtualTrade);
+            }, durationMs);
+            
+            // Store timeout for cleanup
+            contractTimeouts.set(virtualTrade.contractId, timeoutId);
+            
+            logActivity('Virtual trade will be resolved in ' + Math.floor(durationMs / 1000) + 's', 'info');
+        }
+        
+        // Calculate Virtual Trade Result
+        function calculateVirtualTradeResult(virtualTrade) {
+            const trade = tradeHistory.find(t => t.contractId === virtualTrade.contractId);
+            if (!trade) return;
+            
+            // Get current price at time of calculation
+            const exitPrice = currentPrice;
+            const entryPrice = virtualTrade.virtualStartPrice;
+            
+            // Determine if trade won or lost
+            let isWin = false;
+            if (virtualTrade.virtualType === 'CALL') {
+                isWin = exitPrice > entryPrice;
+            } else {
+                isWin = exitPrice < entryPrice;
+            }
+            
+            // Calculate profit/loss (simplified - use 95% payout for wins, -100% for losses)
+            const payout = isWin ? (settings.stakeAmount * 0.95) : (-settings.stakeAmount);
+            
+            trade.profit = payout;
+            trade.result = payout > 0 ? 'WIN (+' + payout.toFixed(2) + ')' : 'LOSS (' + payout.toFixed(2) + ')';
+            
+            // Create simulated contract object to reuse existing logic
+            const simulatedContract = {
+                contract_id: virtualTrade.contractId,
+                profit: payout,
+                is_sold: true,
+                status: 'sold'
+            };
+            
+            logActivity('Virtual trade resolved: Entry=' + entryPrice.toFixed(2) + ', Exit=' + exitPrice.toFixed(2) + ', Result=' + trade.result, isWin ? 'success' : 'error');
+            
+            // Update trade result using existing function (will handle virtual loss tracking)
+            updateTradeResult(simulatedContract);
+            
+            // Clean up timeout
+            contractTimeouts.delete(virtualTrade.contractId);
         }
 
         // Manual Trade
@@ -2332,55 +2483,87 @@
                 trade.result = profit > 0 ? 'WIN (+' + profit.toFixed(2) + ')' : 'LOSS (' + profit.toFixed(2) + ')';
                 trade.profit = profit;
                 
-                // Track virtual trading losses (PERMANENT FIX - process ALL virtual trades)
+                // CRITICAL FIX #3 & #4: Track virtual trading losses with proper state management
                 if (virtualTradingEnabled && trade.isVirtual) {
                     const timestamp = new Date().toISOString();
                     
-                    // CRITICAL FIX: Process virtual WINS even if we've already switched to LIVE
-                    // because a WIN should ALWAYS reset the consecutive loss counter
                     if (profit > 0) {
-                        // WIN - ALWAYS RESET counter to ZERO (even if already in LIVE mode)
-                        const oldCount = virtualConsecutiveLosses;
-                        virtualConsecutiveLosses = 0;
-                        
+                        // WIN - Only reset counter if STILL in virtual mode
                         if (isVirtualMode) {
-                            logActivity('[' + timestamp + '] ✓ Virtual WIN! CONSECUTIVE loss counter RESET ' + oldCount + ' → 0 (Contract: ' + trade.contractId + ')', 'success');
+                            const oldCount = virtualConsecutiveLosses;
+                            virtualConsecutiveLosses = 0;
+                            logActivity('[' + timestamp + '] ✓ Virtual WIN! Loss counter RESET ' + oldCount + ' → 0 (Contract: ' + trade.contractId + ')', 'success');
                             if (oldCount > 0) {
-                                logActivity('Starting fresh - need ' + virtualLossThreshold + ' NEW consecutive losses', 'info');
+                                logActivity('Starting fresh - need ' + virtualLossThreshold + ' NEW consecutive losses to switch to LIVE', 'info');
+                            }
+                            updateModeBadges();
+                            
+                            // Save updated state
+                            if (virtualTradingEnabled) {
+                                localStorage.setItem('virtualModeState', JSON.stringify({
+                                    isVirtualMode: isVirtualMode,
+                                    virtualConsecutiveLosses: virtualConsecutiveLosses
+                                }));
                             }
                         } else {
-                            logActivity('[' + timestamp + '] ✓ Late virtual WIN closed (already in LIVE) - counter reset anyway ' + oldCount + ' → 0', 'success');
+                            // Already in LIVE mode - ignore late virtual WIN
+                            logActivity('[' + timestamp + '] Late virtual WIN closed (already in LIVE mode) - no counter change (Contract: ' + trade.contractId + ')', 'info');
                         }
-                        updateModeBadges();
-                        return; // Don't process further
+                        return; // Don't process further for virtual wins
                     }
                     
-                    // Only track LOSSES if still in virtual mode
+                    // LOSS - Only track if STILL in virtual mode
                     if (isVirtualMode) {
                         if (profit < 0) {
                             // LOSS - increment counter
                             virtualConsecutiveLosses++;
                             logActivity('[' + timestamp + '] Virtual LOSS #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold + ' required (Contract: ' + trade.contractId + ')', 'error');
                             
-                            // STRICT: Check if EXACTLY threshold reached
+                            // Check if threshold reached
                             if (virtualConsecutiveLosses >= virtualLossThreshold) {
                                 isVirtualMode = false;
                                 logActivity('[' + timestamp + '] 🔥 EXACTLY ' + virtualLossThreshold + ' consecutive virtual losses! SWITCHING TO LIVE MODE NOW', 'success');
-                                logActivity('═══ All NEW trades will be LIVE ═══', 'success');
+                                logActivity('═══════════════════════════════════════════════', 'success');
+                                logActivity('⚡ LIVE TRADING ACTIVATED - All future trades will be REAL', 'success');
+                                logActivity('═══════════════════════════════════════════════', 'success');
                                 updateModeBadges();
+                                
+                                // Save updated state
+                                if (virtualTradingEnabled) {
+                                    localStorage.setItem('virtualModeState', JSON.stringify({
+                                        isVirtualMode: isVirtualMode,
+                                        virtualConsecutiveLosses: virtualConsecutiveLosses
+                                    }));
+                                }
                             } else {
-                                const remaining = virtualLossThreshold - virtualConsecutiveLosses;
-                                logActivity('[' + timestamp + '] Need ' + remaining + ' more CONSECUTIVE loss(es) to switch to LIVE', 'info');
+                                logActivity('Need ' + (virtualLossThreshold - virtualConsecutiveLosses) + ' more consecutive loss(es) to switch to LIVE', 'info');
+                                updateModeBadges();
+                                
+                                // Save updated state
+                                if (virtualTradingEnabled) {
+                                    localStorage.setItem('virtualModeState', JSON.stringify({
+                                        isVirtualMode: isVirtualMode,
+                                        virtualConsecutiveLosses: virtualConsecutiveLosses
+                                    }));
+                                }
                             }
                         } else {
                             // profit === 0 (tie/draw) - treat as loss
                             virtualConsecutiveLosses++;
-                            logActivity('[' + timestamp + '] Virtual TIE (0.00) = LOSS #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold, 'error');
+                            logActivity('[' + timestamp + '] Virtual TIE (0.00) counted as LOSS #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold, 'error');
+                            updateModeBadges();
+                            
+                            // Save updated state
+                            if (virtualTradingEnabled) {
+                                localStorage.setItem('virtualModeState', JSON.stringify({
+                                    isVirtualMode: isVirtualMode,
+                                    virtualConsecutiveLosses: virtualConsecutiveLosses
+                                }));
+                            }
                         }
-                        updateModeBadges();
                     } else {
-                        // This was a virtual LOSS but we already switched to LIVE mode
-                        logActivity('[' + timestamp + '] Virtual LOSS closed after switch to LIVE - ignored (Contract: ' + trade.contractId + ')', 'info');
+                        // Already in LIVE mode - ignore late virtual losses
+                        logActivity('[' + timestamp + '] Late virtual LOSS closed (already in LIVE mode) - ignored (Contract: ' + trade.contractId + ')', 'info');
                     }
                 }
                 
@@ -2419,27 +2602,87 @@
             }).join('');
         }
 
-        // Update Statistics (LIVE TRADES ONLY - Virtual trades excluded)
+        // Statistics cache for performance optimization
+        let statsCache = {
+            liveTrades: 0,
+            liveWins: 0,
+            liveLosses: 0,
+            livePL: 0,
+            virtualTrades: 0,
+            virtualWins: 0,
+            virtualLosses: 0,
+            virtualPL: 0,
+            lastUpdate: 0
+        };
+
+        // Update Statistics (IMPROVED: Show both Virtual and Live statistics separately)
         function updateStatistics() {
-            // Filter for LIVE trades only (exclude virtual)
-            const completedTrades = tradeHistory.filter(t => t.profit !== undefined && !t.isVirtual);
-            const wins = completedTrades.filter(t => t.profit > 0);
-            const losses = completedTrades.filter(t => t.profit < 0);
-            const totalPL = completedTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
+            const now = Date.now();
             
-            document.getElementById('totalTrades').textContent = completedTrades.length;
-            document.getElementById('totalWins').textContent = wins.length;
-            document.getElementById('totalLosses').textContent = losses.length;
+            // Use cache if updated within last 100ms (performance optimization)
+            if (now - statsCache.lastUpdate < 100) {
+                updateStatisticsDisplay();
+                return statsCache.livePL;
+            }
             
+            // Calculate LIVE trades
+            const liveTrades = tradeHistory.filter(t => t.profit !== undefined && !t.isVirtual);
+            const liveWins = liveTrades.filter(t => t.profit > 0);
+            const liveLosses = liveTrades.filter(t => t.profit < 0);
+            const livePL = liveTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
+            
+            // Calculate VIRTUAL trades
+            const virtualTrades = tradeHistory.filter(t => t.profit !== undefined && t.isVirtual);
+            const virtualWins = virtualTrades.filter(t => t.profit > 0);
+            const virtualLosses = virtualTrades.filter(t => t.profit < 0);
+            const virtualPL = virtualTrades.reduce((sum, t) => sum + (t.profit || 0), 0);
+            
+            // Update cache
+            statsCache = {
+                liveTrades: liveTrades.length,
+                liveWins: liveWins.length,
+                liveLosses: liveLosses.length,
+                livePL: livePL,
+                virtualTrades: virtualTrades.length,
+                virtualWins: virtualWins.length,
+                virtualLosses: virtualLosses.length,
+                virtualPL: virtualPL,
+                lastUpdate: now
+            };
+            
+            updateStatisticsDisplay();
+            
+            // Return total LIVE P/L for stop loss/take profit checking
+            return livePL;
+        }
+        
+        // Update Statistics Display (uses cached values)
+        function updateStatisticsDisplay() {
+            // Show combined format: "LIVE / VIRTUAL"
+            document.getElementById('totalTrades').innerHTML = 
+                `<span style="color: #4fc3f7">${statsCache.liveTrades}</span>` +
+                (statsCache.virtualTrades > 0 ? ` / <span style="color: #ff9800">${statsCache.virtualTrades}V</span>` : '');
+            
+            document.getElementById('totalWins').innerHTML = 
+                `<span style="color: #4fc3f7">${statsCache.liveWins}</span>` +
+                (statsCache.virtualWins > 0 ? ` / <span style="color: #ff9800">${statsCache.virtualWins}V</span>` : '');
+            
+            document.getElementById('totalLosses').innerHTML = 
+                `<span style="color: #4fc3f7">${statsCache.liveLosses}</span>` +
+                (statsCache.virtualLosses > 0 ? ` / <span style="color: #ff9800">${statsCache.virtualLosses}V</span>` : '');
+            
+            // P/L shows LIVE only (virtual trades don't affect real balance)
             const plElement = document.getElementById('totalPL');
-            plElement.textContent = totalPL.toFixed(2);
-            plElement.className = 'stat-value ' + (totalPL > 0 ? 'positive' : totalPL < 0 ? 'negative' : '');
+            plElement.textContent = statsCache.livePL.toFixed(2) + ' (Live)';
+            plElement.className = 'stat-value ' + (statsCache.livePL > 0 ? 'positive' : statsCache.livePL < 0 ? 'negative' : '');
+            
+            // Show virtual P/L info if there are virtual trades
+            if (statsCache.virtualTrades > 0) {
+                plElement.title = `Virtual P/L: ${statsCache.virtualPL.toFixed(2)} (not affecting real balance)`;
+            }
             
             // Update Stop Loss / Take Profit indicators (LIVE trades only)
-            updateSLTPIndicators(totalPL);
-            
-            // Return total P/L for stop loss/take profit checking
-            return totalPL;
+            updateSLTPIndicators(statsCache.livePL);
         }
         
         // Update Stop Loss and Take Profit Indicators
@@ -2813,6 +3056,7 @@
         }
         
         // Restart Trading (called when timer elapses)
+        // Restart Trading (called when timer elapses)
         function restartTrading() {
             logActivity('⏰ Timer elapsed - Restarting trading cycle', 'success');
             logActivity('═══════════════════════════════════════════════', 'info');
@@ -2826,6 +3070,20 @@
             // CLEAR TRADE HISTORY AND STATISTICS
             logActivity('🗑️ Clearing ALL trade history and statistics for fresh cycle', 'info');
             tradeHistory = [];
+            
+            // Clear statistics cache
+            statsCache = {
+                liveTrades: 0,
+                liveWins: 0,
+                liveLosses: 0,
+                livePL: 0,
+                virtualTrades: 0,
+                virtualWins: 0,
+                virtualLosses: 0,
+                virtualPL: 0,
+                lastUpdate: 0
+            };
+            
             updateTradeHistory();
             updateStatistics();
             logActivity('✓ History cleared - Starting from zero', 'success');
@@ -2834,6 +3092,13 @@
             if (virtualTradingEnabled) {
                 isVirtualMode = true;
                 virtualConsecutiveLosses = 0;
+                
+                // Save the reset state
+                localStorage.setItem('virtualModeState', JSON.stringify({
+                    isVirtualMode: isVirtualMode,
+                    virtualConsecutiveLosses: virtualConsecutiveLosses
+                }));
+                
                 logActivity('🔄 VIRTUAL MODE ENFORCED for new cycle', 'success');
                 logActivity('Virtual loss threshold: ' + virtualLossThreshold + ' consecutive losses', 'info');
                 updateModeBadges();
@@ -2915,6 +3180,9 @@
                     contract_id: contractId
                 }));
                 
+                // Remove from pending queue if it was there
+                pendingContractChecks.delete(contractId);
+                
                 // Schedule safety check - if contract still not resolved after 30 seconds, force remove
                 const safetyTimeoutId = setTimeout(() => {
                     if (activeContracts.has(contractId)) {
@@ -2927,10 +3195,34 @@
                 contractTimeouts.set(contractId + '_safety', safetyTimeoutId);
                 
             } else {
-                logActivity(`⚠️ Cannot check contract ${contractId} - WebSocket disconnected`, 'error');
-                // Remove from tracking if disconnected
-                removeContract(contractId, 'DISCONNECTED');
+                // FIX #6: WebSocket disconnected - add to pending queue for retry
+                logActivity(`⚠️ Cannot check contract ${contractId} - WebSocket disconnected, added to retry queue`, 'error');
+                pendingContractChecks.add(contractId);
+                
+                // Schedule a retry check in 5 seconds
+                const retryTimeoutId = setTimeout(() => {
+                    if (pendingContractChecks.has(contractId)) {
+                        logActivity(`🔄 Retrying contract check for ${contractId}...`, 'info');
+                        checkContract(contractId);
+                    }
+                }, 5000);
+                
+                contractTimeouts.set(contractId + '_retry', retryTimeoutId);
             }
+        }
+        
+        // Process pending contract checks after reconnection
+        function processPendingContractChecks() {
+            if (pendingContractChecks.size === 0) return;
+            
+            logActivity(`🔄 Processing ${pendingContractChecks.size} pending contract check(s) after reconnection`, 'info');
+            
+            const contractsToCheck = Array.from(pendingContractChecks);
+            contractsToCheck.forEach(contractId => {
+                if (activeContracts.has(contractId)) {
+                    checkContract(contractId);
+                }
+            });
         }
         
         // Add Contract to Tracking (Smart Duration-Based)
@@ -2955,12 +3247,16 @@
         }
         
         // Remove Contract from Tracking
+        // Remove Contract from Tracking
         function removeContract(contractId, result) {
             if (activeContracts.has(contractId)) {
                 const contract = activeContracts.get(contractId);
                 const mode = contract.isVirtual ? 'VIRTUAL' : 'LIVE';
                 logActivity(`✓ Contract ${contractId} completed (${mode} - ${result}), removed from tracking`, 'success');
                 activeContracts.delete(contractId);
+                
+                // Remove from pending checks queue
+                pendingContractChecks.delete(contractId);
                 
                 // Clear main scheduled timeout
                 if (contractTimeouts.has(contractId)) {
@@ -2974,6 +3270,13 @@
                     clearTimeout(contractTimeouts.get(safetyKey));
                     contractTimeouts.delete(safetyKey);
                 }
+                
+                // Clear retry timeout if exists
+                const retryKey = contractId + '_retry';
+                if (contractTimeouts.has(retryKey)) {
+                    clearTimeout(contractTimeouts.get(retryKey));
+                    contractTimeouts.delete(retryKey);
+                }
             }
         }
         
@@ -2984,6 +3287,7 @@
             }
             contractTimeouts.clear();
             activeContracts.clear();
+            pendingContractChecks.clear();
             logActivity('All contract tracking timeouts cleared', 'info');
         }
 
@@ -3173,8 +3477,18 @@
             mtfCurrentCandle = null;
             mtfCandleStartTime = null;
             
-            // Note: Keep virtual trading state intact
-            // virtualConsecutiveLosses, isVirtualMode remain unchanged
+            // CRITICAL FIX #2: Save virtual trading state before logout
+            if (virtualTradingEnabled) {
+                const virtualState = {
+                    isVirtualMode: isVirtualMode,
+                    virtualConsecutiveLosses: virtualConsecutiveLosses
+                };
+                localStorage.setItem('virtualModeState', JSON.stringify(virtualState));
+                logActivity('💾 Virtual mode state saved: ' + (isVirtualMode ? 'VIRTUAL' : 'LIVE') + ' (Losses: ' + virtualConsecutiveLosses + ')', 'info');
+            }
+            
+            // Note: Virtual trading state is now properly saved above
+            // It will be restored on next login
             
             // Reset UI
             document.getElementById('apiToken').disabled = false;
