@@ -1561,31 +1561,15 @@
             if (data.authorize) {
                 accountInfo = data.authorize;
                 
-                // CRITICAL FIX #1: Initialize virtual mode if enabled
+                // CRITICAL FIX #1: Initialize virtual mode if enabled (ALWAYS FRESH START)
                 if (virtualTradingEnabled) {
-                    // Try to restore saved virtual state first
-                    const savedVirtualState = localStorage.getItem('virtualModeState');
-                    if (savedVirtualState) {
-                        try {
-                            const state = JSON.parse(savedVirtualState);
-                            isVirtualMode = state.isVirtualMode;
-                            virtualConsecutiveLosses = state.virtualConsecutiveLosses || 0;
-                            logActivity('🔄 Restored virtual mode state: ' + (isVirtualMode ? 'VIRTUAL' : 'LIVE') + ' (Losses: ' + virtualConsecutiveLosses + ')', 'info');
-                        } catch (e) {
-                            // If parsing fails, default to virtual mode
-                            isVirtualMode = true;
-                            virtualConsecutiveLosses = 0;
-                        }
-                    } else {
-                        // No saved state - start fresh in virtual mode
-                        isVirtualMode = true;
-                        virtualConsecutiveLosses = 0;
-                    }
+                    // Always start fresh - no state restoration
+                    isVirtualMode = true;
+                    virtualConsecutiveLosses = 0;
                     
-                    logActivity('🛡️ Virtual Trading ENABLED - Starting in ' + (isVirtualMode ? 'VIRTUAL' : 'LIVE') + ' mode', 'success');
-                    if (isVirtualMode) {
-                        logActivity('Safe trading active - will switch to LIVE after ' + virtualLossThreshold + ' consecutive virtual losses', 'info');
-                    }
+                    logActivity('🛡️ Virtual Trading ENABLED - Starting FRESH in VIRTUAL mode', 'success');
+                    logActivity('Safe trading active - will switch to LIVE after ' + virtualLossThreshold + ' consecutive virtual losses', 'info');
+                    logActivity('Counter: 0/' + virtualLossThreshold + ' (fresh start)', 'info');
                     updateModeBadges();
                 } else {
                     // Virtual trading disabled - always start in live mode
@@ -2497,14 +2481,6 @@
                                 logActivity('Starting fresh - need ' + virtualLossThreshold + ' NEW consecutive losses to switch to LIVE', 'info');
                             }
                             updateModeBadges();
-                            
-                            // Save updated state
-                            if (virtualTradingEnabled) {
-                                localStorage.setItem('virtualModeState', JSON.stringify({
-                                    isVirtualMode: isVirtualMode,
-                                    virtualConsecutiveLosses: virtualConsecutiveLosses
-                                }));
-                            }
                         } else {
                             // Already in LIVE mode - ignore late virtual WIN
                             logActivity('[' + timestamp + '] Late virtual WIN closed (already in LIVE mode) - no counter change (Contract: ' + trade.contractId + ')', 'info');
@@ -2527,39 +2503,15 @@
                                 logActivity('⚡ LIVE TRADING ACTIVATED - All future trades will be REAL', 'success');
                                 logActivity('═══════════════════════════════════════════════', 'success');
                                 updateModeBadges();
-                                
-                                // Save updated state
-                                if (virtualTradingEnabled) {
-                                    localStorage.setItem('virtualModeState', JSON.stringify({
-                                        isVirtualMode: isVirtualMode,
-                                        virtualConsecutiveLosses: virtualConsecutiveLosses
-                                    }));
-                                }
                             } else {
                                 logActivity('Need ' + (virtualLossThreshold - virtualConsecutiveLosses) + ' more consecutive loss(es) to switch to LIVE', 'info');
                                 updateModeBadges();
-                                
-                                // Save updated state
-                                if (virtualTradingEnabled) {
-                                    localStorage.setItem('virtualModeState', JSON.stringify({
-                                        isVirtualMode: isVirtualMode,
-                                        virtualConsecutiveLosses: virtualConsecutiveLosses
-                                    }));
-                                }
                             }
                         } else {
                             // profit === 0 (tie/draw) - treat as loss
                             virtualConsecutiveLosses++;
                             logActivity('[' + timestamp + '] Virtual TIE (0.00) counted as LOSS #' + virtualConsecutiveLosses + ' of ' + virtualLossThreshold, 'error');
                             updateModeBadges();
-                            
-                            // Save updated state
-                            if (virtualTradingEnabled) {
-                                localStorage.setItem('virtualModeState', JSON.stringify({
-                                    isVirtualMode: isVirtualMode,
-                                    virtualConsecutiveLosses: virtualConsecutiveLosses
-                                }));
-                            }
                         }
                     } else {
                         // Already in LIVE mode - ignore late virtual losses
@@ -3093,12 +3045,6 @@
                 isVirtualMode = true;
                 virtualConsecutiveLosses = 0;
                 
-                // Save the reset state
-                localStorage.setItem('virtualModeState', JSON.stringify({
-                    isVirtualMode: isVirtualMode,
-                    virtualConsecutiveLosses: virtualConsecutiveLosses
-                }));
-                
                 logActivity('🔄 VIRTUAL MODE ENFORCED for new cycle', 'success');
                 logActivity('Virtual loss threshold: ' + virtualLossThreshold + ' consecutive losses', 'info');
                 updateModeBadges();
@@ -3477,18 +3423,8 @@
             mtfCurrentCandle = null;
             mtfCandleStartTime = null;
             
-            // CRITICAL FIX #2: Save virtual trading state before logout
-            if (virtualTradingEnabled) {
-                const virtualState = {
-                    isVirtualMode: isVirtualMode,
-                    virtualConsecutiveLosses: virtualConsecutiveLosses
-                };
-                localStorage.setItem('virtualModeState', JSON.stringify(virtualState));
-                logActivity('💾 Virtual mode state saved: ' + (isVirtualMode ? 'VIRTUAL' : 'LIVE') + ' (Losses: ' + virtualConsecutiveLosses + ')', 'info');
-            }
-            
-            // Note: Virtual trading state is now properly saved above
-            // It will be restored on next login
+            // Note: Virtual trading state is NOT saved - always starts fresh on login
+            // This ensures every login begins with a clean slate for testing
             
             // Reset UI
             document.getElementById('apiToken').disabled = false;
