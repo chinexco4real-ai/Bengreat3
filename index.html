@@ -2333,8 +2333,19 @@
         
         // Calculate Virtual Trade Result
         function calculateVirtualTradeResult(virtualTrade) {
+            // Find the trade in history
             const trade = tradeHistory.find(t => t.contractId === virtualTrade.contractId);
-            if (!trade) return;
+            if (!trade) {
+                logActivity('⚠️ Cannot find virtual trade ' + virtualTrade.contractId + ' in history - may have been cleared', 'error');
+                contractTimeouts.delete(virtualTrade.contractId);
+                return;
+            }
+            
+            // Verify we have a valid current price
+            if (!currentPrice || currentPrice <= 0) {
+                logActivity('⚠️ Invalid current price for virtual trade resolution - using entry price as exit', 'error');
+                currentPrice = virtualTrade.virtualStartPrice; // Fallback to break-even
+            }
             
             // Get current price at time of calculation
             const exitPrice = currentPrice;
@@ -2354,6 +2365,8 @@
             trade.profit = payout;
             trade.result = payout > 0 ? 'WIN (+' + payout.toFixed(2) + ')' : 'LOSS (' + payout.toFixed(2) + ')';
             
+            logActivity('Virtual trade resolved: Entry=' + entryPrice.toFixed(2) + ', Exit=' + exitPrice.toFixed(2) + ', Result=' + trade.result, isWin ? 'success' : 'error');
+            
             // Create simulated contract object to reuse existing logic
             const simulatedContract = {
                 contract_id: virtualTrade.contractId,
@@ -2362,9 +2375,7 @@
                 status: 'sold'
             };
             
-            logActivity('Virtual trade resolved: Entry=' + entryPrice.toFixed(2) + ', Exit=' + exitPrice.toFixed(2) + ', Result=' + trade.result, isWin ? 'success' : 'error');
-            
-            // Update trade result using existing function (will handle virtual loss tracking)
+            // Update trade result using existing function (will handle virtual loss tracking and display updates)
             updateTradeResult(simulatedContract);
             
             // Clean up timeout
@@ -2485,7 +2496,15 @@
                             // Already in LIVE mode - ignore late virtual WIN
                             logActivity('[' + timestamp + '] Late virtual WIN closed (already in LIVE mode) - no counter change (Contract: ' + trade.contractId + ')', 'info');
                         }
-                        return; // Don't process further for virtual wins
+                        
+                        // CRITICAL FIX: Update displays BEFORE returning for virtual wins
+                        updateTradeHistory();
+                        updateStatistics();
+                        
+                        const mode = trade.isVirtual ? '[VIRTUAL]' : '[LIVE]';
+                        logActivity('Trade closed ' + mode + ': ' + trade.result, profit > 0 ? 'success' : 'error');
+                        
+                        return; // Don't process further for virtual wins (already updated displays)
                     }
                     
                     // LOSS - Only track if STILL in virtual mode
@@ -2522,8 +2541,10 @@
                 updateTradeHistory();
                 updateStatistics();
                 
-                // Check Stop Loss and Take Profit
-                checkStopLossTakeProfit(profit);
+                // Check Stop Loss and Take Profit (only for LIVE trades)
+                if (!trade.isVirtual) {
+                    checkStopLossTakeProfit(profit);
+                }
                 
                 const mode = trade.isVirtual ? '[VIRTUAL]' : '[LIVE]';
                 logActivity('Trade closed ' + mode + ': ' + trade.result, profit > 0 ? 'success' : 'error');
