@@ -363,24 +363,6 @@
             left: 28px;
         }
 
-        /* MTF Indicator */
-        .mtf-indicator {
-            display: inline-block;
-            padding: 4px 8px;
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid #4caf50;
-            border-radius: 4px;
-            font-size: 11px;
-            color: #4caf50;
-            margin-left: 8px;
-        }
-
-        .mtf-indicator.disabled {
-            background: rgba(136, 136, 136, 0.2);
-            border-color: #888;
-            color: #888;
-        }
-
         /* Signal Display */
         .signal-display {
             text-align: center;
@@ -521,14 +503,25 @@
             color: white;
         }
 
-        .mode-badge.rsi {
-            background: #4caf50;
+        .mode-badge.choppiness {
+            background: #ff9800;
             color: white;
         }
 
-        .mode-badge.mtf {
+        .mode-badge.dualsupertrend {
             background: #00bcd4;
             color: white;
+        }
+
+        .mode-badge.pullback {
+            background: #9c27b0;
+            color: white;
+            animation: pulse-pullback 1.5s infinite;
+        }
+
+        @keyframes pulse-pullback {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
 
         .mode-badge.virtual {
@@ -976,28 +969,56 @@
                     </div>
 
                     <div class="setting-item">
-                        <label>Filter 1: RSI</label>
+                        <label>Filter 1: Choppiness Index</label>
                         <div class="toggle-switch">
-                            <div class="switch" id="rsiFilterSwitch" onclick="toggleFilter('rsi')"></div>
-                            <span>Enable RSI Filter</span>
+                            <div class="switch" id="choppinessFilterSwitch" onclick="toggleFilter('choppiness')"></div>
+                            <span>Enable Choppiness Filter (Avoid Sideways Markets)</span>
                         </div>
                     </div>
 
                     <div class="setting-item">
-                        <label>RSI Period</label>
-                        <input type="number" id="rsiPeriod" value="14" min="1" max="50" onchange="saveSettings()">
+                        <label>Choppiness Threshold (Skip if above)</label>
+                        <input type="number" id="choppinessThreshold" value="61.8" min="0" max="100" step="0.1" onchange="saveSettings()">
                     </div>
 
                     <div class="setting-item">
-                        <label>Filter 2: Multi-Timeframe Confirmation</label>
+                        <label>Filter 2: Dual SuperTrend Confirmation</label>
                         <div class="toggle-switch">
-                            <div class="switch" id="mtfFilterSwitch" onclick="toggleFilter('mtf')"></div>
-                            <span>Enable MTF Filter<span class="mtf-indicator" id="mtfIndicator">Auto: 5m</span></span>
+                            <div class="switch" id="dualSupertrendFilterSwitch" onclick="toggleFilter('dualSupertrend')"></div>
+                            <span>Enable Dual SuperTrend Filter (Trend Alignment)</span>
                         </div>
                     </div>
 
                     <div class="setting-item">
-                        <label>Filter 3: Virtual Trading Start</label>
+                        <label>Slow SuperTrend Period</label>
+                        <input type="number" id="slowStPeriod" value="25" min="1" max="100" onchange="saveSettings()">
+                    </div>
+
+                    <div class="setting-item">
+                        <label>Slow SuperTrend Multiplier</label>
+                        <input type="number" id="slowStMultiplier" value="6" min="0.1" max="20" step="0.1" onchange="saveSettings()">
+                    </div>
+
+                    <div class="setting-item">
+                        <label>Filter 3: Pullback Entry</label>
+                        <div class="toggle-switch">
+                            <div class="switch" id="pullbackFilterSwitch" onclick="toggleFilter('pullback')"></div>
+                            <span>Enable Pullback Filter (Wait for Retest)</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-item">
+                        <label>Max Candles to Wait</label>
+                        <input type="number" id="pullbackMaxCandles" value="5" min="2" max="10" onchange="saveSettings()">
+                    </div>
+
+                    <div class="setting-item">
+                        <label>Pullback Distance (ATR multiplier)</label>
+                        <input type="number" id="pullbackAtrMultiplier" value="0.6" min="0.1" max="2" step="0.1" onchange="saveSettings()">
+                    </div>
+
+                    <div class="setting-item">
+                        <label>Filter 4: Virtual Trading Start</label>
                         <div class="toggle-switch">
                             <div class="switch" id="virtualFilterSwitch" onclick="toggleFilter('virtual')"></div>
                             <span>Start with Virtual Trading</span>
@@ -1010,7 +1031,7 @@
                     </div>
 
                     <div class="setting-item">
-                        <label>Filter 4: Auto-Restart Timer</label>
+                        <label>Filter 5: Auto-Restart Timer</label>
                         <div class="toggle-switch">
                             <div class="switch" id="timerFilterSwitch" onclick="toggleFilter('timer')"></div>
                             <span>Enable Auto-Restart After SL/TP</span>
@@ -1243,14 +1264,13 @@
         let alternatorMode = false;
         let lastTradeType = null;
         
-        // Multi-Timeframe variables
-        let mtfEnabled = false;
-        let mtfCandleData = [];
-        let mtfCandlePeriod = 300; // Default 5 minutes for 1-minute base
-        let mtfSubscription = null;
-        let currentMtfCandleSymbol = null;
-        let mtfCurrentCandle = null;
-        let mtfCandleStartTime = null;
+        // Pullback Filter variables
+        let pullbackWaitingForEntry = false;
+        let pullbackSignalType = null;
+        let pullbackFlipCandle = 0;
+        let pullbackSupertrendValue = 0;
+        let pullbackMaxCandleIndex = 0;
+        let pullbackCurrentAtr = 0;
         
         // Virtual Trading variables
         let virtualTradingEnabled = false;
@@ -1289,9 +1309,8 @@
         let settings = {
             stPeriod: 10,
             stMultiplier: 3.0,
-            rsiEnabled: false,
-            rsiPeriod: 14,
-            mtfEnabled: false,
+            choppinessEnabled: false,
+            choppinessThreshold: 61.8,
             virtualEnabled: false,
             virtualLossThreshold: 3,
             timerEnabled: false,
@@ -1302,7 +1321,13 @@
             takeProfit: 0,
             durationType: 't',
             tradeDuration: 5,
-            candlePeriod: 60  // Default to 1-minute candles
+            candlePeriod: 60,  // Default to 1-minute candles
+            dualSupertrendEnabled: false,
+            slowStPeriod: 25,
+            slowStMultiplier: 6,
+            pullbackEnabled: false,
+            pullbackMaxCandles: 5,
+            pullbackAtrMultiplier: 0.6
         };
 
         // Initialize on load
@@ -1319,20 +1344,28 @@
             const container = document.getElementById('modeBadges');
             container.innerHTML = '';
             
-            // Show RSI filter badge if enabled
-            if (settings.rsiEnabled) {
+            // Show Choppiness filter badge if enabled
+            if (settings.choppinessEnabled) {
                 const badge = document.createElement('div');
-                badge.className = 'mode-badge rsi';
-                badge.textContent = 'RSI Filter (' + settings.rsiPeriod + ')';
+                badge.className = 'mode-badge choppiness';
+                badge.textContent = 'Choppiness Filter (>' + settings.choppinessThreshold + ')';
                 container.appendChild(badge);
             }
             
-            // Show MTF filter badge if enabled
-            if (settings.mtfEnabled) {
+            // Show Dual SuperTrend filter badge if enabled
+            if (settings.dualSupertrendEnabled) {
                 const badge = document.createElement('div');
-                badge.className = 'mode-badge mtf';
-                const mtfLabel = getMTFLabel();
-                badge.textContent = 'MTF Confirmation (' + mtfLabel + ')';
+                badge.className = 'mode-badge dualsupertrend';
+                badge.textContent = 'Dual SuperTrend (' + settings.slowStPeriod + '/' + settings.slowStMultiplier + ')';
+                container.appendChild(badge);
+            }
+            
+            // Show Pullback filter badge if waiting for pullback entry
+            if (pullbackWaitingForEntry) {
+                const badge = document.createElement('div');
+                badge.className = 'mode-badge pullback';
+                const candlesLeft = pullbackMaxCandleIndex - candleData.length;
+                badge.textContent = 'Waiting for Pullback (' + pullbackSignalType + ' - ' + candlesLeft + ' candles left)';
                 container.appendChild(badge);
             }
             
@@ -1615,12 +1648,6 @@
                         candleSubscription = data.subscription.id;
                         logActivity('Live tick subscription confirmed: ' + marketNames[currentCandleSymbol], 'success');
                     }
-                    // Capture MTF subscription ID
-                    if (settings.mtfEnabled && !mtfSubscription && data.subscription.id !== candleSubscription) {
-                        mtfSubscription = data.subscription.id;
-                        const mtfLabel = getMTFLabel();
-                        logActivity('MTF subscription confirmed: ' + mtfLabel + ' timeframe', 'success');
-                    }
                 }
                 
                 // Update current price display
@@ -1629,11 +1656,6 @@
                 
                 // Build candles from live ticks
                 processLiveTick(tickPrice, tickTime);
-                
-                // Build MTF candles from same ticks
-                if (settings.mtfEnabled) {
-                    processMTFTick(tickPrice, tickTime);
-                }
             }
 
             // Proposal response
@@ -1771,36 +1793,6 @@
             }));
 
             logActivity('Subscribing to ' + marketNames[symbol] + ' live ticks for real-time candle building...', 'info');
-            
-            // Subscribe to MTF candles if enabled
-            if (settings.mtfEnabled) {
-                subscribeMTFCandles(symbol);
-            }
-        }
-
-        // Subscribe to MTF Candles
-        function subscribeMTFCandles(symbol) {
-            if (!settings.mtfEnabled) return;
-            
-            // Unsubscribe from previous MTF stream if exists
-            if (mtfSubscription) {
-                ws.send(JSON.stringify({ forget: mtfSubscription }));
-                mtfSubscription = null;
-                mtfCandleData = [];
-                mtfCurrentCandle = null;
-                mtfCandleStartTime = null;
-            }
-            
-            currentMtfCandleSymbol = symbol;
-            
-            // Subscribe to higher timeframe ticks
-            ws.send(JSON.stringify({
-                ticks: symbol,
-                subscribe: 1
-            }));
-            
-            const mtfLabel = getMTFLabel();
-            logActivity('MTF: Subscribing to ' + mtfLabel + ' confirmation timeframe...', 'info');
         }
 
         // Process Live Tick and Build Candles
@@ -1847,48 +1839,10 @@
             calculateStrategy();
         }
 
-        // Process MTF Tick and Build Higher Timeframe Candles
-        function processMTFTick(price, timestamp) {
-            // Calculate which MTF candle period this tick belongs to
-            const mtfPeriodStart = Math.floor(timestamp / mtfCandlePeriod) * mtfCandlePeriod;
-            
-            // Check if we need to start a new MTF candle
-            if (!mtfCurrentCandle || mtfPeriodStart !== mtfCandleStartTime) {
-                // If we have a completed candle, add it to history
-                if (mtfCurrentCandle) {
-                    mtfCandleData.push(mtfCurrentCandle);
-                    
-                    // Keep only last 100 candles in array
-                    if (mtfCandleData.length > 100) {
-                        mtfCandleData.shift();
-                    }
-                }
-                
-                // Start new MTF candle
-                mtfCurrentCandle = {
-                    time: mtfPeriodStart,
-                    open: price,
-                    high: price,
-                    low: price,
-                    close: price
-                };
-                mtfCandleStartTime = mtfPeriodStart;
-            } else {
-                // Update current MTF candle with new tick
-                mtfCurrentCandle.high = Math.max(mtfCurrentCandle.high, price);
-                mtfCurrentCandle.low = Math.min(mtfCurrentCandle.low, price);
-                mtfCurrentCandle.close = price;
-            }
-        }
-
         // Calculate SuperTrend Strategy
         function calculateStrategy() {
             // Base requirement: period + 1 for ATR, +1 for first ST, +1 for signal flip = period + 3
             let requiredLength = settings.stPeriod + 3;
-            
-            if (settings.rsiEnabled) {
-                requiredLength = Math.max(requiredLength, settings.rsiPeriod + 2);
-            }
             
             if (candleData.length < requiredLength) {
                 const progress = Math.floor((candleData.length / requiredLength) * 100);
@@ -1916,11 +1870,19 @@
                 
                 // Show which filters are enabled
                 let filterInfo = '';
-                if (settings.rsiEnabled || settings.mtfEnabled) {
-                    const enabledFilters = [];
-                    if (settings.rsiEnabled) enabledFilters.push('RSI');
-                    if (settings.mtfEnabled) enabledFilters.push('MTF ' + getMTFLabel());
-                    filterInfo = ' | Filters: ' + enabledFilters.join(', ');
+                const activeFilters = [];
+                if (settings.choppinessEnabled) {
+                    activeFilters.push('Choppiness (>' + settings.choppinessThreshold + ')');
+                }
+                if (settings.dualSupertrendEnabled) {
+                    activeFilters.push('Dual ST (' + settings.slowStPeriod + '/' + settings.slowStMultiplier + ')');
+                }
+                if (settings.pullbackEnabled) {
+                    activeFilters.push('Pullback (max ' + settings.pullbackMaxCandles + ' candles)');
+                }
+                
+                if (activeFilters.length > 0) {
+                    filterInfo = ' | Filters: ' + activeFilters.join(', ');
                 } else {
                     filterInfo = ' | No filters';
                 }
@@ -1971,87 +1933,142 @@
                 return;
             }
             
+            // Calculate slow SuperTrend for dual confirmation if enabled
+            let slowSuperTrend = null;
+            if (settings.dualSupertrendEnabled) {
+                const slowAtr = calculateATR(candleData, settings.slowStPeriod);
+                slowSuperTrend = calculateSuperTrend(candleData, settings.slowStPeriod, settings.slowStMultiplier, slowAtr);
+            }
+            
             const currentTrend = superTrend[superTrend.length - 1];
             const previousTrend = superTrend[superTrend.length - 2];
             
             let signal = 'NONE';
             let signalDetails = '';
             
-            if (previousTrend.trend === 'DOWN' && currentTrend.trend === 'UP') {
-                signal = 'BUY';
-                signalDetails = 'SuperTrend Bullish Flip';
-            } else if (previousTrend.trend === 'UP' && currentTrend.trend === 'DOWN') {
-                signal = 'SELL';
-                signalDetails = 'SuperTrend Bearish Flip';
+            // Check if we're waiting for a pullback entry
+            if (pullbackWaitingForEntry && settings.pullbackEnabled) {
+                // Check if max candles exceeded
+                if (candleData.length > pullbackMaxCandleIndex) {
+                    pullbackWaitingForEntry = false;
+                    pullbackSignalType = null;
+                    logActivity('⏱ Pullback timeout - no retest within ' + settings.pullbackMaxCandles + ' candles, signal skipped', 'warning');
+                    updateModeBadges();
+                } else {
+                    // Check for pullback to SuperTrend line
+                    const currentPrice = candleData[candleData.length - 1].close;
+                    const currentLow = candleData[candleData.length - 1].low;
+                    const currentHigh = candleData[candleData.length - 1].high;
+                    const pullbackDistance = pullbackAtrMultiplier * pullbackCurrentAtr;
+                    
+                    let pullbackOccurred = false;
+                    
+                    if (pullbackSignalType === 'BUY') {
+                        // For BUY: check if price came near the SuperTrend line from above
+                        const distanceToLine = currentLow - pullbackSupertrendValue;
+                        if (distanceToLine <= pullbackDistance && distanceToLine >= -pullbackDistance) {
+                            // Price touched or came near the line, check for bounce
+                            if (currentPrice > pullbackSupertrendValue || currentPrice > currentLow) {
+                                pullbackOccurred = true;
+                                signal = 'BUY';
+                                signalDetails = 'Pullback Retest Confirmed (Touched ST line)';
+                                logActivity('✓ Pullback retest confirmed for BUY - price bounced from ST line', 'success');
+                            }
+                        }
+                    } else if (pullbackSignalType === 'SELL') {
+                        // For SELL: check if price came near the SuperTrend line from below
+                        const distanceToLine = pullbackSupertrendValue - currentHigh;
+                        if (distanceToLine <= pullbackDistance && distanceToLine >= -pullbackDistance) {
+                            // Price touched or came near the line, check for bounce
+                            if (currentPrice < pullbackSupertrendValue || currentPrice < currentHigh) {
+                                pullbackOccurred = true;
+                                signal = 'SELL';
+                                signalDetails = 'Pullback Retest Confirmed (Touched ST line)';
+                                logActivity('✓ Pullback retest confirmed for SELL - price bounced from ST line', 'success');
+                            }
+                        }
+                    }
+                    
+                    if (pullbackOccurred) {
+                        pullbackWaitingForEntry = false;
+                        pullbackSignalType = null;
+                        updateModeBadges();
+                    } else {
+                        // Still waiting, update signal display
+                        const candlesLeft = pullbackMaxCandleIndex - candleData.length;
+                        signalDetails = 'Waiting for pullback to ST line (' + candlesLeft + ' candles left)';
+                        updateSignalDisplay('WAITING', signalDetails);
+                        updateModeBadges();
+                        return; // Don't process new signals while waiting
+                    }
+                }
+            }
+            
+            // Detect new flip if not already in pullback mode
+            if (!pullbackWaitingForEntry) {
+                if (previousTrend.trend === 'DOWN' && currentTrend.trend === 'UP') {
+                    signal = 'BUY';
+                    signalDetails = 'SuperTrend Bullish Flip';
+                } else if (previousTrend.trend === 'UP' && currentTrend.trend === 'DOWN') {
+                    signal = 'SELL';
+                    signalDetails = 'SuperTrend Bearish Flip';
+                }
             }
 
-            // Filters
+            // Pullback Filter - Enter waiting mode instead of immediate trade
+            if (signal !== 'NONE' && settings.pullbackEnabled && !pullbackWaitingForEntry) {
+                // Record flip details
+                pullbackWaitingForEntry = true;
+                pullbackSignalType = signal;
+                pullbackFlipCandle = candleData.length;
+                pullbackSupertrendValue = currentTrend.value;
+                pullbackMaxCandleIndex = candleData.length + settings.pullbackMaxCandles;
+                pullbackCurrentAtr = atr[atr.length - 1];
+                
+                logActivity('🔔 ' + signal + ' signal detected - entering pullback wait mode (max ' + settings.pullbackMaxCandles + ' candles)', 'info');
+                signalDetails = 'Waiting for pullback to ST line (' + settings.pullbackMaxCandles + ' candles left)';
+                updateSignalDisplay('WAITING', signalDetails);
+                updateModeBadges();
+                
+                // Don't execute trade yet, wait for pullback
+                return;
+            }
+
+            // Filters (only apply if we have a confirmed signal from pullback or immediate mode)
             if (signal !== 'NONE') {
-                if (settings.rsiEnabled && signal !== 'NONE') {
-                    const rsi = calculateRSI(candleData, settings.rsiPeriod);
-                    if (!rsi || rsi.length === 0) {
+                // Dual SuperTrend Filter - must be checked FIRST for trend alignment
+                if (settings.dualSupertrendEnabled && signal !== 'NONE') {
+                    if (!slowSuperTrend || slowSuperTrend.length < 1) {
                         signal = 'NONE';
-                        signalDetails = 'Filtered: RSI calculation failed';
+                        signalDetails = 'Filtered: Waiting for slow SuperTrend calculation';
                     } else {
-                        const currentRSI = rsi[rsi.length - 1];
-                        if (signal === 'BUY') {
-                            if (currentRSI > 70) {
-                                signal = 'NONE';
-                                signalDetails = 'Filtered: RSI Overbought (' + currentRSI.toFixed(2) + ')';
-                            } else if (currentRSI <= 50) {
-                                signal = 'NONE';
-                                signalDetails = 'Filtered: RSI Not Bullish (' + currentRSI.toFixed(2) + ')';
-                            } else {
-                                signalDetails += ' | RSI: ' + currentRSI.toFixed(2);
-                            }
-                        } else if (signal === 'SELL') {
-                            if (currentRSI < 30) {
-                                signal = 'NONE';
-                                signalDetails = 'Filtered: RSI Oversold (' + currentRSI.toFixed(2) + ')';
-                            } else if (currentRSI >= 50) {
-                                signal = 'NONE';
-                                signalDetails = 'Filtered: RSI Not Bearish (' + currentRSI.toFixed(2) + ')';
-                            } else {
-                                signalDetails += ' | RSI: ' + currentRSI.toFixed(2);
-                            }
+                        const slowCurrentTrend = slowSuperTrend[slowSuperTrend.length - 1];
+                        const slowTrendDirection = slowCurrentTrend.trend;
+                        
+                        // Check if slow SuperTrend confirms the signal
+                        if (signal === 'BUY' && slowTrendDirection !== 'UP') {
+                            signal = 'NONE';
+                            signalDetails = 'Filtered: Slow SuperTrend not bullish (Trend: ' + slowTrendDirection + ')';
+                        } else if (signal === 'SELL' && slowTrendDirection !== 'DOWN') {
+                            signal = 'NONE';
+                            signalDetails = 'Filtered: Slow SuperTrend not bearish (Trend: ' + slowTrendDirection + ')';
+                        } else {
+                            signalDetails += ' | Slow ST: ' + slowTrendDirection + ' ✓';
                         }
                     }
                 }
                 
-                // MTF Confirmation Filter
-                if (settings.mtfEnabled && signal !== 'NONE') {
-                    // Require minimum MTF candles for reliable SuperTrend
-                    const mtfRequiredLength = settings.stPeriod + 3;
-                    
-                    if (mtfCandleData.length < mtfRequiredLength) {
+                if (settings.choppinessEnabled && signal !== 'NONE') {
+                    const choppiness = calculateChoppinessIndex(candleData, 14);
+                    if (choppiness === null) {
                         signal = 'NONE';
-                        const mtfLabel = getMTFLabel();
-                        signalDetails = 'Filtered: Collecting ' + mtfLabel + ' candles (' + mtfCandleData.length + '/' + mtfRequiredLength + ')';
+                        signalDetails = 'Filtered: Choppiness calculation failed';
                     } else {
-                        // Calculate SuperTrend on MTF data
-                        const mtfAtr = calculateATR(mtfCandleData, settings.stPeriod);
-                        const mtfSuperTrend = calculateSuperTrend(mtfCandleData, settings.stPeriod, settings.stMultiplier, mtfAtr);
-                        
-                        if (!mtfSuperTrend || mtfSuperTrend.length < 1) {
+                        if (choppiness > settings.choppinessThreshold) {
                             signal = 'NONE';
-                            signalDetails = 'Filtered: MTF SuperTrend calculation pending';
+                            signalDetails = 'Filtered: Market too choppy (Choppiness: ' + choppiness.toFixed(2) + ' > ' + settings.choppinessThreshold + ')';
                         } else {
-                            const mtfCurrentTrend = mtfSuperTrend[mtfSuperTrend.length - 1];
-                            const mtfTrendDirection = mtfCurrentTrend.trend;
-                            
-                            // Check if MTF trend matches the signal
-                            if (signal === 'BUY' && mtfTrendDirection !== 'UP') {
-                                signal = 'NONE';
-                                const mtfLabel = getMTFLabel();
-                                signalDetails = 'Filtered: MTF ' + mtfLabel + ' not confirming (Trend: ' + mtfTrendDirection + ')';
-                            } else if (signal === 'SELL' && mtfTrendDirection !== 'DOWN') {
-                                signal = 'NONE';
-                                const mtfLabel = getMTFLabel();
-                                signalDetails = 'Filtered: MTF ' + mtfLabel + ' not confirming (Trend: ' + mtfTrendDirection + ')';
-                            } else {
-                                const mtfLabel = getMTFLabel();
-                                signalDetails += ' | MTF ' + mtfLabel + ': ' + mtfTrendDirection + ' ✓';
-                            }
+                            signalDetails += ' | Choppiness: ' + choppiness.toFixed(2) + ' ✓';
                         }
                     }
                 }
@@ -2064,12 +2081,13 @@
             if (isAutoTrading && signal !== 'NONE' && signal !== currentSignal) {
                 // Build filter status message
                 let filterStatus = '';
-                if (settings.rsiEnabled || settings.mtfEnabled) {
-                    filterStatus = ' [Filters: ';
-                    const activeFilters = [];
-                    if (settings.rsiEnabled) activeFilters.push('RSI ✓');
-                    if (settings.mtfEnabled) activeFilters.push('MTF ✓');
-                    filterStatus += activeFilters.join(', ') + ']';
+                const activeFilters = [];
+                if (settings.choppinessEnabled) activeFilters.push('Choppiness ✓');
+                if (settings.dualSupertrendEnabled) activeFilters.push('Dual ST ✓');
+                if (settings.pullbackEnabled) activeFilters.push('Pullback ✓');
+                
+                if (activeFilters.length > 0) {
+                    filterStatus = ' [Filters: ' + activeFilters.join(', ') + ']';
                 }
                 
                 logActivity('New signal detected: ' + signal + filterStatus + ' (Previous: ' + currentSignal + ')', 'info');
@@ -2169,38 +2187,35 @@
 
         // Calculate ADX
         // Calculate RSI
-        function calculateRSI(candles, period) {
-            const changes = [];
+        function calculateChoppinessIndex(candles, period = 14) {
+            if (candles.length < period) return null;
             
-            for (let i = 1; i < candles.length; i++) {
-                changes.push(candles[i].close - candles[i - 1].close);
-            }
+            const recentCandles = candles.slice(-period);
             
-            const rsi = [];
-            let avgGain = 0;
-            let avgLoss = 0;
-            
-            for (let i = 0; i < period; i++) {
-                if (changes[i] > 0) avgGain += changes[i];
-                else avgLoss += Math.abs(changes[i]);
-            }
-            
-            avgGain /= period;
-            avgLoss /= period;
-            
-            rsi.push(100 - (100 / (1 + (avgGain / avgLoss))));
-            
-            for (let i = period; i < changes.length; i++) {
-                const gain = changes[i] > 0 ? changes[i] : 0;
-                const loss = changes[i] < 0 ? Math.abs(changes[i]) : 0;
+            let highestHigh = -Infinity;
+            let lowestLow = Infinity;
+            let sumTrueRange = 0;
+
+            for (let i = 0; i < recentCandles.length; i++) {
+                highestHigh = Math.max(highestHigh, recentCandles[i].high);
+                lowestLow = Math.min(lowestLow, recentCandles[i].low);
                 
-                avgGain = ((avgGain * (period - 1)) + gain) / period;
-                avgLoss = ((avgLoss * (period - 1)) + loss) / period;
-                
-                rsi.push(100 - (100 / (1 + (avgGain / avgLoss))));
+                if (i > 0) {
+                    const trueRange = Math.max(
+                        recentCandles[i].high - recentCandles[i].low,
+                        Math.abs(recentCandles[i].high - recentCandles[i - 1].close),
+                        Math.abs(recentCandles[i].low - recentCandles[i - 1].close)
+                    );
+                    sumTrueRange += trueRange;
+                }
             }
+
+            const range = highestHigh - lowestLow;
+            if (range === 0) return 50;
+
+            const choppiness = 100 * Math.log10(sumTrueRange / range) / Math.log10(period);
             
-            return rsi;
+            return Math.max(0, Math.min(100, choppiness));
         }
 
         // Update Signal Display
@@ -2815,7 +2830,6 @@
             
             if (newPeriod !== candlePeriod) {
                 candlePeriod = newPeriod;
-                mtfCandlePeriod = getMTFPeriod(); // Update MTF period
                 
                 // Clear current candle data and reset
                 candleData = [];
@@ -2825,19 +2839,9 @@
                 candleCollectionStartTime = null;
                 candleCollectionComplete = false;
                 
-                // Clear MTF candle data
-                mtfCandleData = [];
-                mtfCurrentCandle = null;
-                mtfCandleStartTime = null;
-                
                 const periodText = candlePeriod === 30 ? '30-second' : '1-minute';
-                const mtfLabel = getMTFLabel();
                 const speedInfo = candlePeriod === 30 ? ' (Candles will build 2x faster!)' : '';
                 logActivity('Candle period changed to ' + periodText + speedInfo + ' - resetting candle data', 'info');
-                
-                if (settings.mtfEnabled) {
-                    logActivity('MTF confirmation timeframe updated to ' + mtfLabel, 'info');
-                }
                 
                 // If connected, resubscribe to rebuild candles with new period
                 if (ws && ws.readyState === WebSocket.OPEN && currentCandleSymbol) {
@@ -2849,17 +2853,8 @@
                     detailsElement.textContent = 'Building ' + periodText + ' candles from live ticks...';
                     
                     logActivity('Rebuilding candles with ' + periodText + ' period...', 'info');
-                    
-                    // Resubscribe MTF if enabled
-                    if (settings.mtfEnabled && mtfSubscription) {
-                        ws.send(JSON.stringify({ forget: mtfSubscription }));
-                        mtfSubscription = null;
-                        subscribeMTFCandles(settings.marketSymbol);
-                    }
                 }
                 
-                // Update MTF indicator
-                updateMTFIndicator();
                 saveSettings();
             }
         }
@@ -2872,17 +2867,6 @@
             if (isActive) {
                 switchElement.classList.remove('active');
                 settings[filterType + 'Enabled'] = false;
-                
-                // If disabling MTF, unsubscribe from higher timeframe
-                if (filterType === 'mtf' && mtfSubscription) {
-                    if (ws && ws.readyState === WebSocket.OPEN) {
-                        ws.send(JSON.stringify({ forget: mtfSubscription }));
-                        mtfSubscription = null;
-                        currentMtfCandleSymbol = null;
-                        mtfCandleData = [];
-                        logActivity('MTF subscription stopped', 'info');
-                    }
-                }
                 
                 // If disabling virtual trading
                 if (filterType === 'virtual') {
@@ -2898,14 +2882,26 @@
                     stopRestartTimer();
                     logActivity('Auto-restart timer disabled', 'info');
                 }
+
+                // If disabling choppiness
+                if (filterType === 'choppiness') {
+                    logActivity('Choppiness filter disabled', 'info');
+                }
+
+                // If disabling dual supertrend
+                if (filterType === 'dualSupertrend') {
+                    logActivity('Dual SuperTrend filter disabled', 'info');
+                }
+
+                // If disabling pullback
+                if (filterType === 'pullback') {
+                    pullbackWaitingForEntry = false;
+                    pullbackSignalType = null;
+                    logActivity('Pullback filter disabled', 'info');
+                }
             } else {
                 switchElement.classList.add('active');
                 settings[filterType + 'Enabled'] = true;
-                
-                // If enabling MTF and logged in, subscribe to higher timeframe
-                if (filterType === 'mtf' && isLoggedIn) {
-                    subscribeMTFCandles(settings.marketSymbol);
-                }
                 
                 // If enabling virtual trading
                 if (filterType === 'virtual') {
@@ -2920,52 +2916,34 @@
                     timerFilterEnabled = true;
                     logActivity('Auto-restart timer enabled - will restart after SL/TP triggers', 'info');
                 }
+
+                // If enabling choppiness
+                if (filterType === 'choppiness') {
+                    logActivity('Choppiness filter enabled - will skip choppy markets (>' + settings.choppinessThreshold + ')', 'info');
+                }
+
+                // If enabling dual supertrend
+                if (filterType === 'dualSupertrend') {
+                    logActivity('Dual SuperTrend filter enabled - requires alignment with slow ST (' + settings.slowStPeriod + '/' + settings.slowStMultiplier + ')', 'info');
+                }
+
+                // If enabling pullback
+                if (filterType === 'pullback') {
+                    logActivity('Pullback filter enabled - will wait for price to retest ST line (max ' + settings.pullbackMaxCandles + ' candles)', 'info');
+                }
             }
             
             saveSettings();
             updateModeBadges(); // Update visual badges immediately
             
-            const filterName = filterType === 'mtf' ? 'MTF' : filterType === 'virtual' ? 'Virtual Trading' : filterType.toUpperCase();
+            const filterName = filterType === 'choppiness' ? 'Choppiness' : filterType === 'dualSupertrend' ? 'Dual SuperTrend' : filterType === 'pullback' ? 'Pullback' : filterType === 'virtual' ? 'Virtual Trading' : filterType.toUpperCase();
             const status = settings[filterType + 'Enabled'] ? 'enabled' : 'disabled';
             logActivity(filterName + ' filter ' + status, 'info');
-            
-            // Update MTF indicator
-            if (filterType === 'mtf') {
-                updateMTFIndicator();
-            }
             
             // If trading is active, recalculate strategy with new filter settings
             if (isLoggedIn && candleData.length > 0) {
                 logActivity('Applying ' + filterName + ' filter changes in real-time...', 'info');
                 calculateStrategy();
-            }
-        }
-
-        // Get MTF Period Label
-        function getMTFLabel() {
-            if (candlePeriod === 30) return '3m';
-            if (candlePeriod === 60) return '5m';
-            return '5m';
-        }
-        
-        // Get MTF Period in Seconds
-        function getMTFPeriod() {
-            if (candlePeriod === 30) return 180; // 3 minutes
-            if (candlePeriod === 60) return 300; // 5 minutes
-            return 300;
-        }
-        
-        // Update MTF Indicator Display
-        function updateMTFIndicator() {
-            const indicator = document.getElementById('mtfIndicator');
-            if (indicator) {
-                const label = getMTFLabel();
-                indicator.textContent = 'Auto: ' + label;
-                if (settings.mtfEnabled) {
-                    indicator.classList.remove('disabled');
-                } else {
-                    indicator.classList.add('disabled');
-                }
             }
         }
 
@@ -3262,7 +3240,11 @@
         function saveSettings() {
             settings.stPeriod = parseInt(document.getElementById('stPeriod').value);
             settings.stMultiplier = parseFloat(document.getElementById('stMultiplier').value);
-            settings.rsiPeriod = parseInt(document.getElementById('rsiPeriod').value);
+            settings.choppinessThreshold = parseFloat(document.getElementById('choppinessThreshold').value);
+            settings.slowStPeriod = parseInt(document.getElementById('slowStPeriod').value);
+            settings.slowStMultiplier = parseFloat(document.getElementById('slowStMultiplier').value);
+            settings.pullbackMaxCandles = parseInt(document.getElementById('pullbackMaxCandles').value);
+            settings.pullbackAtrMultiplier = parseFloat(document.getElementById('pullbackAtrMultiplier').value);
             settings.stakeAmount = parseFloat(document.getElementById('stakeAmount').value);
             settings.stopLoss = parseFloat(document.getElementById('stopLoss').value);
             settings.takeProfit = parseFloat(document.getElementById('takeProfit').value);
@@ -3306,7 +3288,11 @@
                 
                 document.getElementById('stPeriod').value = settings.stPeriod;
                 document.getElementById('stMultiplier').value = settings.stMultiplier;
-                document.getElementById('rsiPeriod').value = settings.rsiPeriod;
+                document.getElementById('choppinessThreshold').value = settings.choppinessThreshold || 61.8;
+                document.getElementById('slowStPeriod').value = settings.slowStPeriod || 25;
+                document.getElementById('slowStMultiplier').value = settings.slowStMultiplier || 6;
+                document.getElementById('pullbackMaxCandles').value = settings.pullbackMaxCandles || 5;
+                document.getElementById('pullbackAtrMultiplier').value = settings.pullbackAtrMultiplier || 0.6;
                 document.getElementById('stakeAmount').value = settings.stakeAmount;
                 document.getElementById('stopLoss').value = settings.stopLoss || 0;
                 document.getElementById('takeProfit').value = settings.takeProfit || 0;
@@ -3314,11 +3300,14 @@
                 document.getElementById('virtualLossThreshold').value = settings.virtualLossThreshold || 3;
                 document.getElementById('restartDelay').value = settings.restartDelay || 5;
                 
-                if (settings.rsiEnabled) {
-                    document.getElementById('rsiFilterSwitch').classList.add('active');
+                if (settings.choppinessEnabled) {
+                    document.getElementById('choppinessFilterSwitch').classList.add('active');
                 }
-                if (settings.mtfEnabled) {
-                    document.getElementById('mtfFilterSwitch').classList.add('active');
+                if (settings.dualSupertrendEnabled) {
+                    document.getElementById('dualSupertrendFilterSwitch').classList.add('active');
+                }
+                if (settings.pullbackEnabled) {
+                    document.getElementById('pullbackFilterSwitch').classList.add('active');
                 }
                 if (settings.virtualEnabled) {
                     document.getElementById('virtualFilterSwitch').classList.add('active');
@@ -3356,15 +3345,11 @@
                 // Load and apply candle period
                 if (settings.candlePeriod) {
                     candlePeriod = settings.candlePeriod;
-                    mtfCandlePeriod = getMTFPeriod(); // Update MTF period
                     const candlePeriodRadio = document.querySelector(`input[name="candlePeriod"][value="${settings.candlePeriod}"]`);
                     if (candlePeriodRadio) {
                         candlePeriodRadio.checked = true;
                     }
                 }
-                
-                // Update MTF indicator
-                updateMTFIndicator();
             }
         }
 
@@ -3397,11 +3382,6 @@
                         forget: candleSubscription
                     }));
                 }
-                if (mtfSubscription) {
-                    ws.send(JSON.stringify({
-                        forget: mtfSubscription
-                    }));
-                }
             }
             
             if (ws) {
@@ -3421,8 +3401,6 @@
             // Reset subscription IDs
             candleSubscription = null;
             currentCandleSymbol = null;
-            mtfSubscription = null;
-            currentMtfCandleSymbol = null;
             
             // Reset proposal and trading state
             proposalId = null;
@@ -3438,11 +3416,6 @@
             totalCandleCount = 0;
             candleCollectionStartTime = null;
             candleCollectionComplete = false;
-            
-            // Reset MTF candle building
-            mtfCandleData = [];
-            mtfCurrentCandle = null;
-            mtfCandleStartTime = null;
             
             // Note: Virtual trading state is NOT saved - always starts fresh on login
             // This ensures every login begins with a clean slate for testing
